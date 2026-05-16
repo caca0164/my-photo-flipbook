@@ -1,0 +1,1 @@
+Could not find the 'price_female_assistant_no_cents' column of 'booking_config' in the schema cache
