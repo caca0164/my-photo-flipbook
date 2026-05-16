@@ -6,6 +6,7 @@ import { coverTitleGradientTextStyle } from "@/lib/cover-gold-presets";
 import { useNavOpen } from "@/app/components/NavOpenContext";
 import { isLocale, messages, type Locale } from "@/lib/i18n";
 import { PageFlip } from "page-flip";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
@@ -18,9 +19,54 @@ type PageFlipWithEvents = PageFlip & {
 /** Runtime API on `PageFlip`; not declared in the package’s published typings. */
 type PageFlipWithRender = PageFlip & {
   getRender(): {
-    getRect(): { left: number; top: number; pageWidth: number; height: number };
+    getRect(): { left: number; top: number; width: number; pageWidth: number; height: number };
+    convertToBook(pos: { x: number; y: number }): { x: number; y: number };
+  };
+  getPageCollection(): {
+    getCurrentSpreadIndex(): number;
+    getSpread(): number[][];
   };
 };
+
+const LAST_PAGE_SWIPE_PX = 30;
+const LAST_PAGE_SWIPE_MS = 500;
+const LAST_PAGE_DRAG_PX = 28;
+
+function isOnLastSpread(instance: PageFlip, pageCount: number): boolean {
+  try {
+    const col = (instance as PageFlipWithRender).getPageCollection();
+    const spreads = col.getSpread();
+    if (spreads.length === 0) return false;
+    return col.getCurrentSpreadIndex() >= spreads.length - 1;
+  } catch {
+    return (instance as PageFlipWithEvents).getCurrentPageIndex() >= pageCount - 1;
+  }
+}
+
+function isForwardFlipAtPoint(
+  instance: PageFlip,
+  clientX: number,
+  clientY: number,
+  usePortrait: boolean,
+): boolean {
+  const render = (instance as PageFlipWithRender).getRender();
+  const rect = render.getRect();
+  const bookPos = render.convertToBook({ x: clientX, y: clientY });
+  if (usePortrait) {
+    return bookPos.x - rect.pageWidth > rect.width / 5;
+  }
+  return bookPos.x >= rect.width / 2;
+}
+
+function isBackwardFlipAtPoint(
+  instance: PageFlip,
+  clientX: number,
+  clientY: number,
+  usePortrait: boolean,
+): boolean {
+  return !isForwardFlipAtPoint(instance, clientX, clientY, usePortrait);
+}
+
 
 /** After album view + cover layout are ready, wait before revealing the title (ms). */
 const COVER_TITLE_ENTER_DELAY_MS = 300;
@@ -116,6 +162,8 @@ export default function FlipBook({
   ambient?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const bookingNavLockRef = useRef(false);
   const mountKey = `${coverOverlayKey(coverOverlay)}\0${pages
     .map((p) => {
       if (p.kind === "image") return `${p.id}:${p.src}`;
@@ -174,6 +222,64 @@ export default function FlipBook({
     let instance: PageFlip | null = null;
     let resizeObserver: ResizeObserver | null = null;
     let cancelled = false;
+    let flipBlock: HTMLElement | null = null;
+    let pointerStart: {
+      x: number;
+      y: number;
+      t: number;
+      wasOnLastSpread: boolean;
+    } | null = null;
+
+    const goToBooking = () => {
+      if (ambient || bookingNavLockRef.current) return;
+      bookingNavLockRef.current = true;
+      router.push(`/${loc}/booking`);
+    };
+
+    const isEventOnBook = (e: PointerEvent) => {
+      const host = containerRef.current;
+      if (!host || !(e.target instanceof Node)) return false;
+      return host.contains(e.target);
+    };
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (ambient || !instance || e.button !== 0 || !isEventOnBook(e)) return;
+      pointerStart = {
+        x: e.clientX,
+        y: e.clientY,
+        t: Date.now(),
+        wasOnLastSpread: isOnLastSpread(instance, pages.length),
+      };
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      if (ambient || !instance) return;
+      const start = pointerStart;
+      pointerStart = null;
+      if (!start?.wasOnLastSpread || e.button !== 0) return;
+
+      const dx = e.clientX - start.x;
+      const dy = e.clientY - start.y;
+      const elapsed = Date.now() - start.t;
+      const isSwipe =
+        Math.abs(dx) > LAST_PAGE_SWIPE_PX &&
+        Math.abs(dy) < LAST_PAGE_SWIPE_PX * 2 &&
+        elapsed < LAST_PAGE_SWIPE_MS;
+      const isTap = Math.abs(dx) < 14 && Math.abs(dy) < 14;
+
+      if (isSwipe && dx > 0) return;
+      if (isTap && isBackwardFlipAtPoint(instance, e.clientX, e.clientY, phoneViewport)) return;
+
+      const forward =
+        (isSwipe && dx < 0) ||
+        (isTap && isForwardFlipAtPoint(instance, e.clientX, e.clientY, phoneViewport)) ||
+        dx < -LAST_PAGE_DRAG_PX ||
+        (!isTap &&
+          isForwardFlipAtPoint(instance, start.x, start.y, phoneViewport) &&
+          dx < 0);
+
+      if (forward) goToBooking();
+    };
 
     const syncTitleSlotLayout = () => {
       if (cancelled || !instance) return;
@@ -241,7 +347,13 @@ export default function FlipBook({
         instance = new PageFlip(mount, settings);
         instance.loadFromHTML(domPages);
         const block = mount.querySelector(".stf__block");
-        setTitleBlockEl(block instanceof HTMLElement ? block : null);
+        flipBlock = block instanceof HTMLElement ? block : null;
+        setTitleBlockEl(flipBlock);
+        if (!ambient) {
+          window.addEventListener("pointerdown", onPointerDown, true);
+          window.addEventListener("pointerup", onPointerUp, true);
+          window.addEventListener("pointercancel", onPointerUp, true);
+        }
         if (typeof ResizeObserver !== "undefined" && block instanceof HTMLElement) {
           resizeObserver = new ResizeObserver(() => {
             if (cancelled) return;
@@ -281,6 +393,12 @@ export default function FlipBook({
 
     return () => {
       cancelled = true;
+      bookingNavLockRef.current = false;
+      pointerStart = null;
+      window.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("pointerup", onPointerUp, true);
+      window.removeEventListener("pointercancel", onPointerUp, true);
+      flipBlock = null;
       cancelAnimationFrame(raf1);
       cancelAnimationFrame(raf2);
       window.removeEventListener("resize", onWinResize);
@@ -307,7 +425,7 @@ export default function FlipBook({
       setTitleBlockEl(null);
       container.replaceChildren();
     };
-  }, [mountKey, width, height, phoneViewport, locale]);
+  }, [mountKey, width, height, phoneViewport, locale, ambient, loc, router, pages.length]);
 
   const showGoldOverlay = Boolean(
     coverOverlay?.coverEnabled && !phoneViewport && leftSlotOverlay && pages.length > 0,

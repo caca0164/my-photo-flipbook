@@ -2,6 +2,7 @@
 
 import {
   setStoreProductActive,
+  setStoreProductSoldOut,
   updateStoreOrderStatus,
   upsertStoreProduct,
 } from "@/app/actions/store-admin";
@@ -56,6 +57,7 @@ export default function StoreAdminClient({
   const [imageUrl, setImageUrl] = useState("");
   const [sortOrder, setSortOrder] = useState("0");
   const [active, setActive] = useState(true);
+  const [soldOut, setSoldOut] = useState(false);
 
   function resetForm() {
     setEditingId(null);
@@ -69,6 +71,7 @@ export default function StoreAdminClient({
     setImageUrl("");
     setSortOrder("0");
     setActive(true);
+    setSoldOut(false);
   }
 
   function loadProduct(p: ProductRow) {
@@ -83,6 +86,7 @@ export default function StoreAdminClient({
     setImageUrl(p.image_url ?? "");
     setSortOrder(String(p.sort_order));
     setActive(p.active);
+    setSoldOut(p.sold_out);
   }
 
   const priceCents = useMemo(() => {
@@ -107,6 +111,7 @@ export default function StoreAdminClient({
         currency: "hkd",
         image_url: imageUrl.trim() || null,
         active,
+        sold_out: soldOut,
         sort_order: Number.parseInt(sortOrder, 10) || 0,
       });
       if ("error" in r && r.error) setError(r.error);
@@ -121,6 +126,15 @@ export default function StoreAdminClient({
     setError(null);
     start(async () => {
       const r = await setStoreProductActive(id, next);
+      if ("error" in r && r.error) setError(r.error);
+      else router.refresh();
+    });
+  }
+
+  function onToggleSoldOut(id: string, next: boolean) {
+    setError(null);
+    start(async () => {
+      const r = await setStoreProductSoldOut(id, next);
       if ("error" in r && r.error) setError(r.error);
       else router.refresh();
     });
@@ -266,6 +280,10 @@ export default function StoreAdminClient({
               <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
               {t.storeAdminActive}
             </label>
+            <label className="flex items-center gap-2 text-sm text-zinc-300">
+              <input type="checkbox" checked={soldOut} onChange={(e) => setSoldOut(e.target.checked)} />
+              {t.storeAdminSoldOut}
+            </label>
             <div className="flex flex-wrap gap-2">
               <button
                 type="submit"
@@ -291,6 +309,7 @@ export default function StoreAdminClient({
                   <th className="px-3 py-2">Slug</th>
                   <th className="px-3 py-2">HKD</th>
                   <th className="px-3 py-2">Active</th>
+                  <th className="px-3 py-2">Stock</th>
                   <th className="px-3 py-2" />
                 </tr>
               </thead>
@@ -302,6 +321,7 @@ export default function StoreAdminClient({
                       {formatPriceFromCents(p.price_cents, p.currency, locale)}
                     </td>
                     <td className="px-3 py-2 text-zinc-400">{p.active ? "yes" : "no"}</td>
+                    <td className="px-3 py-2 text-zinc-400">{p.sold_out ? "sold out" : "in stock"}</td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-2">
                         <button
@@ -310,6 +330,14 @@ export default function StoreAdminClient({
                           className="text-amber-200/90 hover:text-amber-100"
                         >
                           Edit
+                        </button>
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() => onToggleSoldOut(p.id, !p.sold_out)}
+                          className="text-zinc-400 hover:text-zinc-200"
+                        >
+                          {p.sold_out ? t.storeAdminMarkInStock : t.storeAdminMarkSoldOut}
                         </button>
                         <button
                           type="button"

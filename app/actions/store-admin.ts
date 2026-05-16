@@ -90,6 +90,7 @@ export async function upsertStoreProduct(input: {
   currency: string;
   image_url: string | null;
   active: boolean;
+  sold_out: boolean;
   sort_order: number;
 }) {
   const r = await requireAdminSupabase();
@@ -111,6 +112,7 @@ export async function upsertStoreProduct(input: {
     currency: cur,
     image_url: input.image_url?.trim() || null,
     active: input.active,
+    sold_out: input.sold_out,
     sort_order: Math.round(Number(input.sort_order)) || 0,
     updated_at: new Date().toISOString(),
   };
@@ -132,6 +134,18 @@ export async function setStoreProductActive(productId: string, active: boolean) 
   const { error } = await r.supabase
     .from("store_products")
     .update({ active, updated_at: new Date().toISOString() })
+    .eq("id", productId);
+  if (error) return { error: error.message };
+  revalidateStorePaths();
+  return { ok: true as const };
+}
+
+export async function setStoreProductSoldOut(productId: string, soldOut: boolean) {
+  const r = await requireAdminSupabase();
+  if ("error" in r) return { error: r.error };
+  const { error } = await r.supabase
+    .from("store_products")
+    .update({ sold_out: soldOut, updated_at: new Date().toISOString() })
     .eq("id", productId);
   if (error) return { error: error.message };
   revalidateStorePaths();

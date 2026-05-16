@@ -309,26 +309,13 @@ export default function SideNav({
                 </form>
               </div>
             ) : (
-              <ul className="flex flex-col gap-1">
-                <li>
-                  <Link
-                    href={`/${locale}/login`}
-                    onClick={() => setOpen(false)}
-                    className="block rounded-lg px-3 py-2.5 text-sm text-zinc-200 transition hover:bg-zinc-800"
-                  >
-                    {t.navLogin}
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href={`/${locale}/register`}
-                    onClick={() => setOpen(false)}
-                    className="block rounded-lg px-3 py-2.5 text-sm text-zinc-200 transition hover:bg-zinc-800"
-                  >
-                    {t.navRegister}
-                  </Link>
-                </li>
-              </ul>
+              <Link
+                href={`/${locale}/login`}
+                onClick={() => setOpen(false)}
+                className="block rounded-lg px-3 py-2.5 text-sm text-zinc-200 transition hover:bg-zinc-800"
+              >
+                {t.navMemberAuth}
+              </Link>
             )}
           </div>
 

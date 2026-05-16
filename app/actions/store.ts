@@ -12,7 +12,7 @@ export async function listStoreProductsPublic() {
   const { data, error } = await supabase
     .from("store_products")
     .select(
-      "id, slug, product_kind, title_en, title_zh, description_en, description_zh, price_cents, currency, image_url, active, sort_order",
+      "id, slug, product_kind, title_en, title_zh, description_en, description_zh, price_cents, currency, image_url, active, sold_out, sort_order",
     )
     .eq("active", true)
     .order("sort_order", { ascending: true });
@@ -72,7 +72,7 @@ export async function createStoreCheckoutSession(input: {
 
   const { data: products, error: pe } = await svc
     .from("store_products")
-    .select("id, title_en, title_zh, price_cents, currency, active")
+    .select("id, title_en, title_zh, price_cents, currency, active, sold_out")
     .in(
       "id",
       lines.map((l) => l.productId),
@@ -101,9 +101,11 @@ export async function createStoreCheckoutSession(input: {
           price_cents: number;
           currency: string;
           active: boolean;
+          sold_out: boolean;
         }
       | undefined;
-    if (!p || !p.active) return { error: "One or more products are unavailable." };
+    if (!p || !p.active) return { error: "unavailable" };
+    if (p.sold_out) return { error: "sold_out" };
     if (String(p.currency).toLowerCase() !== currency) {
       return { error: "Mixed currencies are not supported in one order." };
     }

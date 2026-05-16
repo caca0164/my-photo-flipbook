@@ -72,7 +72,13 @@ export default function StoreCheckoutClient({
         shippingAddress: address,
       });
       if ("error" in res && res.error) {
-        setError(res.error);
+        const msg =
+          res.error === "sold_out"
+            ? t.storeCheckoutErrorSoldOut
+            : res.error === "unavailable"
+              ? t.storeCheckoutErrorUnavailable
+              : res.error;
+        setError(msg);
         return;
       }
       if ("url" in res && res.url) {

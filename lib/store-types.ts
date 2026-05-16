@@ -19,8 +19,15 @@ export type StoreProductRow = {
   currency: string;
   image_url: string | null;
   active: boolean;
+  sold_out: boolean;
   sort_order: number;
 };
+
+export function isStoreProductPurchasable(
+  p: Pick<StoreProductRow, "active" | "sold_out">,
+): boolean {
+  return p.active && !p.sold_out;
+}
 
 export type CartLine = { productId: string; quantity: number };
 

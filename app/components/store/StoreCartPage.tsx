@@ -3,7 +3,7 @@
 import { formatPriceFromCents } from "@/lib/format-price";
 import type { Locale } from "@/lib/i18n";
 import { messages } from "@/lib/i18n";
-import type { StoreProductRow } from "@/lib/store-types";
+import { isStoreProductPurchasable, type StoreProductRow } from "@/lib/store-types";
 import Link from "next/link";
 import { useEffect, useMemo } from "react";
 import { useStoreCart } from "./StoreCartProvider";
@@ -23,7 +23,9 @@ export default function StoreCartPage({
 
   useEffect(() => {
     if (!ready || catalogFetchFailed) return;
-    retainLinesForKnownProducts(products.map((p) => p.id));
+    retainLinesForKnownProducts(
+      products.filter((p) => isStoreProductPurchasable(p)).map((p) => p.id),
+    );
   }, [ready, catalogFetchFailed, products, retainLinesForKnownProducts]);
 
   const byId = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
@@ -32,7 +34,7 @@ export default function StoreCartPage({
     return lines
       .map((l) => {
         const p = byId.get(l.productId);
-        if (!p) return null;
+        if (!p || !isStoreProductPurchasable(p)) return null;
         const title = locale === "zh" ? p.title_zh : p.title_en;
         const lineTotal = p.price_cents * l.quantity;
         return { line: l, p, title, lineTotal };
