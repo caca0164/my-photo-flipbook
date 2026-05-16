@@ -10,6 +10,7 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
+    pathname.startsWith("/auth/") ||
     /\.[a-zA-Z0-9]+$/.test(pathname)
   ) {
     return sessionResponse;

@@ -18,6 +18,11 @@ function safeRedirectPath(path: string, fallback: string) {
   return path;
 }
 
+function normalizeAuthError(message: string): string {
+  if (/rate limit/i.test(message)) return "email_rate_limit";
+  return message;
+}
+
 async function getSiteOrigin(): Promise<string> {
   const env = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
   if (env) return env;
@@ -77,7 +82,7 @@ export async function signInOrSignUp(
   });
 
   if (signUpError) {
-    return { error: signUpError.message };
+    return { error: normalizeAuthError(signUpError.message) };
   }
 
   revalidatePath("/", "layout");
@@ -119,7 +124,7 @@ export async function requestPasswordReset(
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
 
   if (error) {
-    return { error: error.message };
+    return { error: normalizeAuthError(error.message) };
   }
 
   return { success: "reset_email_sent" };

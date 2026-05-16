@@ -20,7 +20,10 @@ function mapAuthError(t: (typeof messages)[Locale], code: string | undefined): s
       return t.authResetSessionExpired;
     case "service_unavailable":
       return t.authErrorServiceUnavailable;
+    case "email_rate_limit":
+      return t.authErrorRateLimit;
     default:
+      if (/rate limit/i.test(code)) return t.authErrorRateLimit;
       return code;
   }
 }

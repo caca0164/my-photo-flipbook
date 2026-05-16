@@ -54,6 +54,8 @@ export const messages = {
     authErrorPasswordTooShort: "Password must be at least 6 characters.",
     authErrorInvalidCredentials: "Incorrect email or password.",
     authErrorServiceUnavailable: "Service temporarily unavailable. Try again later.",
+    authErrorRateLimit:
+      "Too many emails sent. Please wait about an hour, or ask the site admin to configure custom SMTP in Supabase.",
     navStore: "Store",
     langLabel: "Language",
     metaTitle: "DPG Team",
@@ -579,6 +581,8 @@ export const messages = {
     authErrorPasswordTooShort: "密碼至少需要 6 個字元。",
     authErrorInvalidCredentials: "電郵或密碼不正確。",
     authErrorServiceUnavailable: "服務暫時無法使用，請稍後再試。",
+    authErrorRateLimit:
+      "驗證郵件發送次數已達上限，請約 1 小時後再試，或請管理員在 Supabase 設定自訂 SMTP。",
     navStore: "Store",
     langLabel: "語言",
     metaTitle: "DPG Team",
