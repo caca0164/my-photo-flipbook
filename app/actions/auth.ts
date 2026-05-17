@@ -33,6 +33,36 @@ async function getSiteOrigin(): Promise<string> {
   return "http://localhost:3000";
 }
 
+/** Start Google OAuth (sign-in or auto-register on first Google login). */
+export async function signInWithGoogle(
+  _prevState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const redirectTo = String(formData.get("redirect") ?? "").trim();
+  const fallback = String(formData.get("localeFallback") ?? "/en");
+  const afterLogin = safeRedirectPath(redirectTo, safeRedirectPath(fallback, "/en"));
+
+  const supabase = await createClient();
+  const origin = await getSiteOrigin();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(afterLogin)}`,
+      queryParams: {
+        prompt: "select_account",
+      },
+    },
+  });
+
+  if (error) {
+    return { error: "google_oauth_failed" };
+  }
+  if (data.url) {
+    redirect(data.url);
+  }
+  return { error: "google_oauth_failed" };
+}
+
 /** Sign in; if email is not registered, create an account with the same password. */
 export async function signInOrSignUp(
   _prevState: AuthActionState,

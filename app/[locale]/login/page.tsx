@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ redirect?: string }>;
+  searchParams: Promise<{ redirect?: string; error?: string }>;
 };
 
 export default async function LoginPage({ params, searchParams }: Props) {
@@ -15,6 +15,10 @@ export default async function LoginPage({ params, searchParams }: Props) {
   const sp = await searchParams;
   const redirectRaw =
     typeof sp.redirect === "string" ? sp.redirect : `/${locale}`;
+  const authCallbackError =
+    typeof sp.error === "string" && sp.error === "auth_callback"
+      ? "auth_callback"
+      : undefined;
   const t = getMessages(locale);
 
   return (
@@ -23,7 +27,11 @@ export default async function LoginPage({ params, searchParams }: Props) {
         <h1 className="text-xl font-semibold">{t.authPageTitle}</h1>
         <p className="mt-2 max-w-md text-sm text-zinc-400">{t.authPageSubtitle}</p>
       </div>
-      <MemberAuthForm locale={locale} redirectTo={redirectRaw} />
+      <MemberAuthForm
+        locale={locale}
+        redirectTo={redirectRaw}
+        initialError={authCallbackError}
+      />
       <Link
         href={`/${locale}`}
         className="text-sm text-zinc-400 underline underline-offset-4 hover:text-white"

@@ -34,7 +34,9 @@ export const messages = {
     navRegister: "Sign up",
     navMemberAuth: "Log in · Sign up",
     authPageTitle: "Member account",
-    authPageSubtitle: "Enter your email and password to continue.",
+    authPageSubtitle: "Sign in with Google or use your email and password.",
+    authGoogleBtn: "Continue with Google",
+    authOrEmailDivider: "or with email",
     authUnifiedHint:
       "If this email is not registered yet, we will create an account for you automatically.",
     authContinueBtn: "Continue",
@@ -56,6 +58,10 @@ export const messages = {
     authErrorServiceUnavailable: "Service temporarily unavailable. Try again later.",
     authErrorRateLimit:
       "Too many emails sent. Please wait about an hour, or ask the site admin to configure custom SMTP in Supabase.",
+    authErrorGoogleOAuth:
+      "Could not start Google sign-in. Try again or use email and password below.",
+    authErrorAuthCallback:
+      "Sign-in was cancelled or failed. Please try again.",
     navStore: "Store",
     langLabel: "Language",
     metaTitle: "DPG Team",
@@ -562,7 +568,9 @@ export const messages = {
     navRegister: "註冊",
     navMemberAuth: "登入 · 註冊",
     authPageTitle: "會員帳戶",
-    authPageSubtitle: "輸入電郵與密碼即可繼續。",
+    authPageSubtitle: "可使用 Google 登入，或以電郵與密碼繼續。",
+    authGoogleBtn: "使用 Google 繼續",
+    authOrEmailDivider: "或使用電郵",
     authUnifiedHint: "若此電郵尚未註冊，系統會自動為你建立帳號。",
     authContinueBtn: "繼續",
     authForgotPassword: "忘記密碼？",
@@ -583,6 +591,9 @@ export const messages = {
     authErrorServiceUnavailable: "服務暫時無法使用，請稍後再試。",
     authErrorRateLimit:
       "驗證郵件發送次數已達上限，請約 1 小時後再試，或請管理員在 Supabase 設定自訂 SMTP。",
+    authErrorGoogleOAuth:
+      "無法啟動 Google 登入，請稍後再試或改用下方電郵登入。",
+    authErrorAuthCallback: "登入已取消或失敗，請再試一次。",
     navStore: "Store",
     langLabel: "語言",
     metaTitle: "DPG Team",
