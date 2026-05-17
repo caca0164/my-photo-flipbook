@@ -296,6 +296,11 @@ export default function FlipBook({
       }
     };
 
+    const viewportH =
+      typeof window !== "undefined"
+        ? Math.ceil(window.innerHeight || document.documentElement.clientHeight)
+        : 900;
+
     const settings: FlipSettings = {
       width,
       height,
@@ -303,7 +308,7 @@ export default function FlipBook({
       minWidth: 300,
       maxWidth: MAX_PAGE_WIDTH,
       minHeight: 400,
-      maxHeight: 1700,
+      maxHeight: Math.max(400, viewportH),
       drawShadow: true,
       flippingTime: 1000,
       usePortrait: phoneViewport,
@@ -314,6 +319,8 @@ export default function FlipBook({
 
     const mount = document.createElement("div");
     mount.style.width = "100%";
+    mount.style.height = "100%";
+    container.style.height = "100%";
     container.appendChild(mount);
 
     const domPages = pages.map((p) => buildPageElement(p));
@@ -329,6 +336,11 @@ export default function FlipBook({
       const host = containerRef.current;
       const stack = host?.parentElement;
       if (!host || !stack?.classList.contains("flip-cover-book-stack")) return;
+      if (!ambient) {
+        (stack as HTMLElement).style.minHeight = "100%";
+        host.style.minHeight = "100%";
+        return;
+      }
       const wrap = host.querySelector(".stf__wrapper") as HTMLElement | null;
       const hWrap = wrap?.getBoundingClientRect().height ?? 0;
       const hHost = host.getBoundingClientRect().height;
@@ -337,6 +349,11 @@ export default function FlipBook({
     };
 
     const onWinResize = () => {
+      try {
+        instance?.update();
+      } catch {
+        /* ignore */
+      }
       syncStackMinHeight();
       syncTitleSlotLayout();
     };
@@ -410,6 +427,7 @@ export default function FlipBook({
       if (stack?.classList.contains("flip-cover-book-stack")) {
         (stack as HTMLElement).style.minHeight = "";
       }
+      if (host) host.style.minHeight = "";
       try {
         (instance as PageFlipWithEvents | null)?.off("flip");
         (instance as PageFlipWithEvents | null)?.off("init");
@@ -489,19 +507,19 @@ export default function FlipBook({
     return () => window.clearInterval(id);
   }, [albumTitleEntered, coverTitle, ambient, titleChars.length]);
 
-  const vhBudget = "min(100dvh, 100svh)";
+  const vhFull = "min(100dvh, 100svh)";
   const spreadMaxCss = `${2 * MAX_PAGE_WIDTH}px`;
   const fitMaxWidth = phoneViewport
-    ? `min(min(calc(100vw - 1.5rem), ${spreadMaxCss}), calc((${vhBudget} - 1.5rem) * ${width} / ${height}))`
-    : `min(min(calc(100vw - 1.5rem), ${spreadMaxCss}), calc((${vhBudget} - 1.5rem) * ${2 * width} / ${height}))`;
+    ? `min(100vw, ${spreadMaxCss}, calc(${vhFull} * ${width} / ${height}))`
+    : `min(100vw, ${spreadMaxCss}, calc(${vhFull} * ${2 * width} / ${height}))`;
 
   if (pages.length === 0) {
     return (
       <div
         className={
           ambient
-            ? "pointer-events-none fixed inset-0 flex min-h-[100dvh] items-center justify-center bg-transparent p-6 text-zinc-600"
-            : "flex min-h-[100dvh] items-center justify-center bg-zinc-950 p-6 text-zinc-500"
+            ? "pointer-events-none fixed inset-0 flex h-[100dvh] items-stretch justify-center bg-transparent"
+            : "flex h-[min(100dvh,100svh)] items-stretch justify-center bg-zinc-950"
         }
       >
         {ambient ? null : t.flipEmptyNoPages}
@@ -517,23 +535,27 @@ export default function FlipBook({
     !ambient && albumTitleEntered && !typewriterDone && titleChars.length > 0;
 
   const outerClass = ambient
-    ? "pointer-events-none fixed inset-0 z-0 flex min-h-[100dvh] w-full items-center justify-center overflow-hidden bg-transparent p-3"
-    : "box-border flex min-h-[100dvh] w-full items-center justify-center overflow-hidden bg-zinc-950 p-3";
+    ? "pointer-events-none fixed inset-0 z-0 flex h-[100dvh] w-full items-stretch justify-center overflow-hidden bg-transparent"
+    : "box-border flex h-[min(100dvh,100svh)] w-full flex-col items-stretch overflow-hidden bg-zinc-950";
 
   return (
     <div className={outerClass}>
       <div
-        className="relative mx-auto w-full overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/20"
+        className="relative mx-auto flex h-full min-h-0 w-full max-w-none flex-1 flex-col overflow-hidden shadow-2xl ring-1 ring-black/20"
         style={{
-          maxWidth: fitMaxWidth,
+          maxWidth: ambient ? fitMaxWidth : "100%",
+          width: ambient ? undefined : "100%",
           boxShadow:
             "0 25px 50px -12px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06) inset, 0 2px 0 rgba(255,255,255,0.04) inset",
         }}
       >
-        <div className="flip-cover-book-stack">
+        <div
+          className="flip-cover-book-stack mx-auto h-full min-h-0 w-full"
+          style={{ maxWidth: fitMaxWidth }}
+        >
           <div
             ref={containerRef}
-            className="flip-cover-book-mount relative z-0 w-full min-h-[120px]"
+            className="flip-cover-book-mount relative z-0 h-full min-h-0 w-full"
             aria-busy="true"
             aria-label={t.navAlbum}
           />
