@@ -299,7 +299,6 @@ export default function FlipBook({
   /** Codepoint count revealed (Array.from length). */
   const [typewriterLen, setTypewriterLen] = useState(0);
   const [phoneIntroDismissed, setPhoneIntroDismissed] = useState(false);
-  const wasOnCoverRef = useRef(true);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setLeftSlotOverlay(true));
@@ -589,24 +588,11 @@ export default function FlipBook({
     setPhoneIntroDismissed(true);
   }, []);
 
-  const replayPhoneIntro = useCallback(() => {
+  useEffect(() => {
     setPhoneIntroDismissed(false);
     setAlbumTitleEntered(false);
     setTypewriterLen(0);
-  }, []);
-
-  useEffect(() => {
-    replayPhoneIntro();
-    wasOnCoverRef.current = true;
-  }, [mountKey, replayPhoneIntro]);
-
-  useEffect(() => {
-    if (!phoneViewport || ambient) return;
-    if (leftSlotOverlay && !wasOnCoverRef.current) {
-      replayPhoneIntro();
-    }
-    wasOnCoverRef.current = leftSlotOverlay;
-  }, [leftSlotOverlay, phoneViewport, ambient, replayPhoneIntro]);
+  }, [mountKey]);
 
   useEffect(() => {
     if (!leftSlotOverlay && phoneViewport) dismissPhoneIntro();
