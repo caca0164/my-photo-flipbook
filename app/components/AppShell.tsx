@@ -6,13 +6,18 @@ import SideNav from "./SideNav";
 export default function AppShell({
   children,
   initialFlipCover,
+  initialBtsPageHidden,
 }: {
   children: ReactNode;
   initialFlipCover: AlbumFlipCoverSettings;
+  initialBtsPageHidden: boolean;
 }) {
   return (
     <NavOpenProvider>
-      <SideNav initialFlipCover={initialFlipCover} />
+      <SideNav
+        initialFlipCover={initialFlipCover}
+        initialBtsPageHidden={initialBtsPageHidden}
+      />
       {children}
     </NavOpenProvider>
   );

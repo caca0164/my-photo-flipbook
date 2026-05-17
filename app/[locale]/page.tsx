@@ -1,4 +1,4 @@
-import FlipBook from "@/app/components/FlipBook";
+import HomeFlipBook from "@/app/components/HomeFlipBook";
 import { getAlbumFlipCoverPublic, listAlbumPagesForPublic } from "@/app/actions/album";
 import type { FlipBookPage } from "@/lib/album-types";
 
@@ -24,5 +24,5 @@ export default async function HomePage({
   ]);
   const show = albumPages.length > 0 ? albumPages : DEMO_PAGES;
 
-  return <FlipBook key={locale} locale={locale} pages={show} coverOverlay={cover} />;
+  return <HomeFlipBook locale={locale} pages={show} coverOverlay={cover} />;
 }

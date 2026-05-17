@@ -42,7 +42,7 @@ export async function getBtsSettingsPublic(): Promise<{
     .eq("id", "default")
     .maybeSingle();
 
-  if (error) return { error: error.message, page_hidden: false };
+  if (error) return { error: error.message, page_hidden: true };
   return { page_hidden: Boolean(data?.page_hidden) };
 }
 

@@ -8,7 +8,15 @@ import { isLocale, messages, type Locale } from "@/lib/i18n";
 import { PageFlip } from "page-flip";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+} from "react";
 
 type PageFlipWithEvents = PageFlip & {
   on(eventName: string, callback: (e: { data: unknown }) => void): PageFlip;
@@ -26,6 +34,7 @@ type PageFlipWithRender = PageFlip & {
     getCurrentSpreadIndex(): number;
     getSpread(): number[][];
   };
+  update(): void;
 };
 
 const LAST_PAGE_SWIPE_PX = 30;
@@ -94,6 +103,49 @@ function usePhoneViewport() {
   );
 }
 
+type ViewportSize = { w: number; h: number };
+
+/** Stable server snapshot — must be the same reference on every getServerSnapshot call. */
+const EMPTY_VIEWPORT: ViewportSize = { w: 0, h: 0 };
+
+let viewportSnapshot = EMPTY_VIEWPORT;
+let viewportSnapshotW = 0;
+let viewportSnapshotH = 0;
+
+function getViewportSnapshot(): ViewportSize {
+  if (typeof window === "undefined") return EMPTY_VIEWPORT;
+  const vv = window.visualViewport;
+  const w = Math.round(vv?.width ?? window.innerWidth);
+  const h = Math.round(vv?.height ?? window.innerHeight);
+  if (w === viewportSnapshotW && h === viewportSnapshotH) return viewportSnapshot;
+  viewportSnapshotW = w;
+  viewportSnapshotH = h;
+  viewportSnapshot = { w, h };
+  return viewportSnapshot;
+}
+
+/** Live layout viewport (mobile URL bar, pinch-zoom) for full-bleed book sizing. */
+function useViewportSize() {
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      const onUpdate = () => onStoreChange();
+      window.addEventListener("resize", onUpdate);
+      window.addEventListener("orientationchange", onUpdate);
+      const vv = window.visualViewport;
+      vv?.addEventListener("resize", onUpdate);
+      vv?.addEventListener("scroll", onUpdate);
+      return () => {
+        window.removeEventListener("resize", onUpdate);
+        window.removeEventListener("orientationchange", onUpdate);
+        vv?.removeEventListener("resize", onUpdate);
+        vv?.removeEventListener("scroll", onUpdate);
+      };
+    },
+    getViewportSnapshot,
+    () => EMPTY_VIEWPORT,
+  );
+}
+
 type FlipSettings = {
   width: number;
   height: number;
@@ -145,6 +197,58 @@ function coverOverlayKey(c: AlbumFlipCoverSettings | null | undefined): string {
   return `${c.coverEnabled}:${c.fontPreset}:${c.titleText}:${c.fontSizePx}:${c.titleOpacity}:${c.titleGoldPreset}`;
 }
 
+const PHONE_INTRO_FADE_MS = 650;
+
+function FlipCoverTitleBlock({
+  coverOverlay,
+  titleFontPx,
+  titleOpacity,
+  albumTitleEntered,
+  typewriterVisible,
+  showTypeCaret,
+  className,
+}: {
+  coverOverlay: AlbumFlipCoverSettings;
+  titleFontPx: number;
+  titleOpacity: number;
+  albumTitleEntered: boolean;
+  typewriterVisible: string;
+  showTypeCaret: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={className ? `flip-cover-title text-center ${className}` : "flip-cover-title text-center"}
+      style={{
+        fontFamily: coverFontCssFamily(coverOverlay.fontPreset),
+        fontSize: `${titleFontPx}px`,
+        opacity: titleOpacity,
+      }}
+      aria-live="polite"
+    >
+      {albumTitleEntered ? (
+        <>
+          <span
+            className="inline align-middle"
+            style={{
+              ...coverTitleGradientTextStyle(coverOverlay.titleGoldPreset),
+              textShadow: titleGlyphShadow,
+            }}
+          >
+            {typewriterVisible}
+          </span>
+          {showTypeCaret ? (
+            <span
+              className="flip-cover-title__caret ml-[0.06em] inline-block h-[0.82em] w-[2px] shrink-0 animate-pulse rounded-sm bg-amber-100/90 align-middle"
+              aria-hidden
+            />
+          ) : null}
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 export default function FlipBook({
   pages,
   coverOverlay,
@@ -164,14 +268,19 @@ export default function FlipBook({
   const containerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const bookingNavLockRef = useRef(false);
+  const phoneViewport = usePhoneViewport();
+  const viewport = useViewportSize();
+  const bookWidth =
+    phoneViewport && viewport.w > 0 ? Math.max(300, viewport.w) : width;
+  const bookHeight =
+    phoneViewport && viewport.h > 0 ? Math.max(400, viewport.h) : height;
+
   const mountKey = `${coverOverlayKey(coverOverlay)}\0${pages
     .map((p) => {
       if (p.kind === "image") return `${p.id}:${p.src}`;
       return `${p.id}:text:${p.body}`;
     })
-    .join("\0")}`;
-
-  const phoneViewport = usePhoneViewport();
+    .join("\0")}${phoneViewport ? `\0${bookWidth}x${bookHeight}` : ""}`;
   const { navOpen } = useNavOpen();
   const loc: Locale = isLocale(locale) ? locale : "en";
   const t = messages[loc];
@@ -189,6 +298,8 @@ export default function FlipBook({
   const [albumTitleEntered, setAlbumTitleEntered] = useState(false);
   /** Codepoint count revealed (Array.from length). */
   const [typewriterLen, setTypewriterLen] = useState(0);
+  const [phoneIntroDismissed, setPhoneIntroDismissed] = useState(false);
+  const wasOnCoverRef = useRef(true);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setLeftSlotOverlay(true));
@@ -296,19 +407,14 @@ export default function FlipBook({
       }
     };
 
-    const viewportH =
-      typeof window !== "undefined"
-        ? Math.ceil(window.innerHeight || document.documentElement.clientHeight)
-        : 900;
-
     const settings: FlipSettings = {
-      width,
-      height,
+      width: bookWidth,
+      height: bookHeight,
       size: "stretch",
-      minWidth: 300,
-      maxWidth: MAX_PAGE_WIDTH,
-      minHeight: 400,
-      maxHeight: Math.max(400, viewportH),
+      minWidth: phoneViewport ? 300 : 300,
+      maxWidth: phoneViewport ? bookWidth : MAX_PAGE_WIDTH,
+      minHeight: phoneViewport ? bookHeight : 400,
+      maxHeight: Math.max(400, bookHeight),
       drawShadow: true,
       flippingTime: 1000,
       usePortrait: phoneViewport,
@@ -337,8 +443,16 @@ export default function FlipBook({
       const stack = host?.parentElement;
       if (!host || !stack?.classList.contains("flip-cover-book-stack")) return;
       if (!ambient) {
-        (stack as HTMLElement).style.minHeight = "100%";
-        host.style.minHeight = "100%";
+        const px = phoneViewport ? `${bookHeight}px` : "100%";
+        (stack as HTMLElement).style.minHeight = px;
+        host.style.minHeight = px;
+        if (phoneViewport) {
+          host.style.height = px;
+          const parent = host.querySelector(".stf__parent") as HTMLElement | null;
+          const wrapper = host.querySelector(".stf__wrapper") as HTMLElement | null;
+          parent?.style.setProperty("height", px);
+          wrapper?.style.setProperty("height", px);
+        }
         return;
       }
       const wrap = host.querySelector(".stf__wrapper") as HTMLElement | null;
@@ -350,7 +464,7 @@ export default function FlipBook({
 
     const onWinResize = () => {
       try {
-        instance?.update();
+        (instance as PageFlipWithRender | null)?.update();
       } catch {
         /* ignore */
       }
@@ -427,7 +541,14 @@ export default function FlipBook({
       if (stack?.classList.contains("flip-cover-book-stack")) {
         (stack as HTMLElement).style.minHeight = "";
       }
-      if (host) host.style.minHeight = "";
+      if (host) {
+        host.style.minHeight = "";
+        host.style.height = "";
+        const parent = host.querySelector(".stf__parent") as HTMLElement | null;
+        const wrapper = host.querySelector(".stf__wrapper") as HTMLElement | null;
+        parent?.style.removeProperty("height");
+        wrapper?.style.removeProperty("height");
+      }
       try {
         (instance as PageFlipWithEvents | null)?.off("flip");
         (instance as PageFlipWithEvents | null)?.off("init");
@@ -443,11 +564,57 @@ export default function FlipBook({
       setTitleBlockEl(null);
       container.replaceChildren();
     };
-  }, [mountKey, width, height, phoneViewport, locale, ambient, loc, router, pages.length]);
+  }, [
+    mountKey,
+    width,
+    height,
+    bookWidth,
+    bookHeight,
+    phoneViewport,
+    locale,
+    ambient,
+    loc,
+    router,
+    pages.length,
+  ]);
 
-  const showGoldOverlay = Boolean(
-    coverOverlay?.coverEnabled && !phoneViewport && leftSlotOverlay && pages.length > 0,
+  const showCoverTypewriter = Boolean(
+    coverOverlay?.coverEnabled && leftSlotOverlay && pages.length > 0 && !ambient,
   );
+  const showDesktopTitlePortal = showCoverTypewriter && !phoneViewport;
+  const showPhoneCoverIntro = showCoverTypewriter && phoneViewport;
+  const showPhoneIntroOverlay = showPhoneCoverIntro && !phoneIntroDismissed && !navOpen;
+
+  const dismissPhoneIntro = useCallback(() => {
+    setPhoneIntroDismissed(true);
+  }, []);
+
+  const replayPhoneIntro = useCallback(() => {
+    setPhoneIntroDismissed(false);
+    setAlbumTitleEntered(false);
+    setTypewriterLen(0);
+  }, []);
+
+  useEffect(() => {
+    replayPhoneIntro();
+    wasOnCoverRef.current = true;
+  }, [mountKey, replayPhoneIntro]);
+
+  useEffect(() => {
+    if (!phoneViewport || ambient) return;
+    if (leftSlotOverlay && !wasOnCoverRef.current) {
+      replayPhoneIntro();
+    }
+    wasOnCoverRef.current = leftSlotOverlay;
+  }, [leftSlotOverlay, phoneViewport, ambient, replayPhoneIntro]);
+
+  useEffect(() => {
+    if (!leftSlotOverlay && phoneViewport) dismissPhoneIntro();
+  }, [leftSlotOverlay, phoneViewport, dismissPhoneIntro]);
+
+  useEffect(() => {
+    if (navOpen && phoneViewport) dismissPhoneIntro();
+  }, [navOpen, phoneViewport, dismissPhoneIntro]);
 
   const coverTitle = useMemo(
     () =>
@@ -459,7 +626,12 @@ export default function FlipBook({
   const titleChars = useMemo(() => Array.from(coverTitle), [coverTitle]);
 
   useEffect(() => {
-    if (!showGoldOverlay || !titleSlotLayout || navOpen) {
+    if (!showCoverTypewriter || navOpen) {
+      setAlbumTitleEntered(false);
+      setTypewriterLen(0);
+      return;
+    }
+    if (!phoneViewport && !titleSlotLayout) {
       setAlbumTitleEntered(false);
       setTypewriterLen(0);
       return;
@@ -473,7 +645,16 @@ export default function FlipBook({
     setTypewriterLen(0);
     const t = window.setTimeout(() => setAlbumTitleEntered(true), COVER_TITLE_ENTER_DELAY_MS);
     return () => window.clearTimeout(t);
-  }, [showGoldOverlay, titleSlotLayout, mountKey, coverTitle, navOpen, ambient, titleChars.length]);
+  }, [
+    showCoverTypewriter,
+    titleSlotLayout,
+    phoneViewport,
+    mountKey,
+    coverTitle,
+    navOpen,
+    ambient,
+    titleChars.length,
+  ]);
 
   useEffect(() => {
     if (!albumTitleEntered) {
@@ -507,20 +688,40 @@ export default function FlipBook({
     return () => window.clearInterval(id);
   }, [albumTitleEntered, coverTitle, ambient, titleChars.length]);
 
-  const vhFull = "min(100dvh, 100svh)";
+  useEffect(() => {
+    if (!showPhoneCoverIntro || phoneIntroDismissed || ambient) return;
+    if (typewriterLen < titleChars.length || titleChars.length === 0) return;
+    const t = window.setTimeout(dismissPhoneIntro, PHONE_INTRO_FADE_MS);
+    return () => window.clearTimeout(t);
+  }, [
+    showPhoneCoverIntro,
+    phoneIntroDismissed,
+    typewriterLen,
+    titleChars.length,
+    ambient,
+    dismissPhoneIntro,
+  ]);
+
   const spreadMaxCss = `${2 * MAX_PAGE_WIDTH}px`;
   const fitMaxWidth = phoneViewport
-    ? `min(100vw, ${spreadMaxCss}, calc(${vhFull} * ${width} / ${height}))`
-    : `min(100vw, ${spreadMaxCss}, calc(${vhFull} * ${2 * width} / ${height}))`;
+    ? "100vw"
+    : `min(100vw, ${spreadMaxCss}, calc(100dvh * ${2 * width} / ${height}))`;
+
+  const shellHeightStyle: CSSProperties | undefined =
+    phoneViewport && viewport.h > 0
+      ? { height: viewport.h, minHeight: viewport.h }
+      : undefined;
+  const shellHeightClass = phoneViewport ? "" : "h-[100dvh]";
 
   if (pages.length === 0) {
     return (
       <div
         className={
           ambient
-            ? "pointer-events-none fixed inset-0 flex h-[100dvh] items-stretch justify-center bg-transparent"
-            : "flex h-[min(100dvh,100svh)] items-stretch justify-center bg-zinc-950"
+            ? `pointer-events-none fixed inset-0 flex w-full items-stretch justify-center overflow-hidden bg-transparent ${shellHeightClass}`
+            : `flex w-full items-stretch justify-center overflow-hidden bg-zinc-950 ${shellHeightClass}`
         }
+        style={shellHeightStyle}
       >
         {ambient ? null : t.flipEmptyNoPages}
       </div>
@@ -534,12 +735,16 @@ export default function FlipBook({
   const showTypeCaret =
     !ambient && albumTitleEntered && !typewriterDone && titleChars.length > 0;
 
+  const phoneTitleFontPx = phoneViewport
+    ? Math.min(titleFontPx, Math.max(28, Math.round(viewport.w * 0.11)))
+    : titleFontPx;
+
   const outerClass = ambient
-    ? "pointer-events-none fixed inset-0 z-0 flex h-[100dvh] w-full items-stretch justify-center overflow-hidden bg-transparent"
-    : "box-border flex h-[min(100dvh,100svh)] w-full flex-col items-stretch overflow-hidden bg-zinc-950";
+    ? `pointer-events-none fixed inset-0 z-0 flex w-full items-stretch justify-center overflow-hidden bg-transparent ${shellHeightClass}`
+    : `box-border flex w-full flex-col items-stretch overflow-hidden bg-zinc-950 ${shellHeightClass}`;
 
   return (
-    <div className={outerClass}>
+    <div className={outerClass} style={shellHeightStyle}>
       <div
         className="relative mx-auto flex h-full min-h-0 w-full max-w-none flex-1 flex-col overflow-hidden shadow-2xl ring-1 ring-black/20"
         style={{
@@ -550,7 +755,7 @@ export default function FlipBook({
         }}
       >
         <div
-          className="flip-cover-book-stack mx-auto h-full min-h-0 w-full"
+          className="flip-cover-book-stack relative mx-auto h-full min-h-0 w-full"
           style={{ maxWidth: fitMaxWidth }}
         >
           <div
@@ -559,7 +764,7 @@ export default function FlipBook({
             aria-busy="true"
             aria-label={t.navAlbum}
           />
-          {titleBlockEl && titleSlotLayout && showGoldOverlay && coverOverlay
+          {titleBlockEl && titleSlotLayout && showDesktopTitlePortal && coverOverlay
             ? createPortal(
                 <div
                   className="flip-cover-title-slot"
@@ -570,39 +775,33 @@ export default function FlipBook({
                     height: titleSlotLayout.height,
                   }}
                 >
-                  <div
-                    className="flip-cover-title text-center"
-                    style={{
-                      fontFamily: coverFontCssFamily(coverOverlay.fontPreset),
-                      fontSize: `${titleFontPx}px`,
-                      opacity: titleOpacity,
-                    }}
-                    aria-live="polite"
-                  >
-                    {albumTitleEntered ? (
-                      <>
-                        <span
-                          className="inline align-middle"
-                          style={{
-                            ...coverTitleGradientTextStyle(coverOverlay.titleGoldPreset),
-                            textShadow: titleGlyphShadow,
-                          }}
-                        >
-                          {typewriterVisible}
-                        </span>
-                        {showTypeCaret ? (
-                          <span
-                            className="flip-cover-title__caret ml-[0.06em] inline-block h-[0.82em] w-[2px] shrink-0 animate-pulse rounded-sm bg-amber-100/90 align-middle"
-                            aria-hidden
-                          />
-                        ) : null}
-                      </>
-                    ) : null}
-                  </div>
+                  <FlipCoverTitleBlock
+                    coverOverlay={coverOverlay}
+                    titleFontPx={titleFontPx}
+                    titleOpacity={titleOpacity}
+                    albumTitleEntered={albumTitleEntered}
+                    typewriterVisible={typewriterVisible}
+                    showTypeCaret={showTypeCaret}
+                  />
                 </div>,
                 titleBlockEl,
               )
             : null}
+          {showPhoneIntroOverlay && coverOverlay ? (
+            <div className="flip-phone-cover-intro" role="presentation">
+              <div className="flip-phone-cover-intro__scrim" aria-hidden />
+              <div className="flip-phone-cover-intro__title">
+                <FlipCoverTitleBlock
+                  coverOverlay={coverOverlay}
+                  titleFontPx={phoneTitleFontPx}
+                  titleOpacity={titleOpacity}
+                  albumTitleEntered={albumTitleEntered}
+                  typewriterVisible={typewriterVisible}
+                  showTypeCaret={showTypeCaret}
+                />
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

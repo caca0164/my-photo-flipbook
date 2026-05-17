@@ -16,7 +16,25 @@ export async function middleware(request: NextRequest) {
     return sessionResponse;
   }
 
-  const first = pathname.split("/").filter(Boolean)[0];
+  const segments = pathname.split("/").filter(Boolean);
+  const first = segments[0];
+
+  // Fix accidental double locale prefix (/en/en/about → /en/about).
+  if (
+    segments.length >= 2 &&
+    first &&
+    isLocale(first) &&
+    segments[1] === first
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/${segments.slice(1).join("/")}`;
+    const redirectResponse = NextResponse.redirect(url);
+    sessionResponse.cookies.getAll().forEach((c) => {
+      redirectResponse.cookies.set(c.name, c.value);
+    });
+    return redirectResponse;
+  }
+
   if (!first || !isLocale(first)) {
     const url = request.nextUrl.clone();
     url.pathname =

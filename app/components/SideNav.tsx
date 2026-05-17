@@ -59,8 +59,10 @@ function localeFromPath(pathname: string | null): Locale {
 
 export default function SideNav({
   initialFlipCover,
+  initialBtsPageHidden,
 }: {
   initialFlipCover: AlbumFlipCoverSettings;
+  initialBtsPageHidden: boolean;
 }) {
   const { navOpen: open, setNavOpen: setOpen } = useNavOpen();
   const pathname = usePathname();
@@ -174,7 +176,10 @@ export default function SideNav({
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [pathname]);
+  }, [pathname, initialBtsPageHidden]);
+
+  const btsPageHidden = me?.btsPageHidden ?? initialBtsPageHidden;
+  const showBtsNavLink = !btsPageHidden || me?.isAdmin === true;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -251,18 +256,18 @@ export default function SideNav({
             >
               {t.navAbout}
             </Link>
-            {me !== null && (!me.btsPageHidden || me.isAdmin) ? (
+            {showBtsNavLink ? (
               <Link
                 href={`/${locale}/bts`}
                 onClick={() => setOpen(false)}
                 className={`block rounded-lg px-3 py-2.5 text-sm transition hover:bg-zinc-800 ${
-                  me?.btsPageHidden && me?.isAdmin
+                  btsPageHidden && me?.isAdmin
                     ? "text-amber-200/80"
                     : "text-zinc-200"
                 }`}
               >
                 {t.navBts}
-                {me?.btsPageHidden && me?.isAdmin ? (
+                {btsPageHidden && me?.isAdmin ? (
                   <span className="ml-1.5 text-[10px] uppercase tracking-wide text-amber-400/70">
                     {t.navBtsAdminOnlyBadge}
                   </span>

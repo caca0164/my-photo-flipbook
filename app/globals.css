@@ -194,10 +194,22 @@ body {
   height: 100% !important;
 }
 
-.flip-cover-book-mount .stf__wrapper,
+.flip-cover-book-mount .stf__wrapper {
+  height: 100%;
+  min-height: 100%;
+}
+
 .flip-cover-book-mount .stf__block {
   height: 100%;
   min-height: 0;
+}
+
+@media (max-width: 767px) {
+  .flip-cover-book-mount .stf__parent,
+  .flip-cover-book-mount .stf__wrapper,
+  .flip-cover-book-mount .stf__block {
+    min-height: 100%;
+  }
 }
 
 /*
@@ -208,6 +220,32 @@ body {
  * the slot tracks the real left page — the book can be horizontally centered in the block,
  * so `width: 50%` of the block does not match one page and would push the title onto the photo.
  */
+/* Mobile cover: dark scrim + centered gold typewriter (same component as desktop cover). */
+.flip-phone-cover-intro {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.flip-phone-cover-intro__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 6, 8, 0.92);
+}
+
+.flip-phone-cover-intro__title {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: min(92vw, 28rem);
+  padding: 1rem 1.25rem;
+  pointer-events: none;
+}
+
 .flip-cover-title-slot {
   position: absolute;
   z-index: 2;
