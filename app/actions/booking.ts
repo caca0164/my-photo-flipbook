@@ -26,7 +26,7 @@ import { listAvailableSlotStarts } from "@/lib/booking-slots-client";
 import type { Locale } from "@/lib/i18n";
 import { sendBookingOrderPaidEmails, type BookingOrderPaidRow } from "@/lib/email-order-receipts";
 import { seedPaidBookingPostChat } from "@/lib/booking-post-paid-chat";
-import { getStripe } from "@/lib/stripe-server";
+import { getStripe, getStripeSecretKeyIssue } from "@/lib/stripe-server";
 
 /** Admin-only test promo: server applies only when `profiles.role === "admin"`. */
 const ADMIN_BOOKING_PROMO_CODE = "pudding";
@@ -204,6 +204,15 @@ export async function createBookingCheckoutSession(input: {
   const adminPromoApplied =
     !adminSkipApplied && sessionProfile?.role === "admin" && promo === ADMIN_BOOKING_PROMO_CODE;
 
+  if (!adminSkipApplied) {
+    const keyIssue = getStripeSecretKeyIssue();
+    if (keyIssue === "invalid_format") {
+      return {
+        error:
+          "STRIPE_SECRET_KEY must be sk_live_ or sk_test_ from Stripe Dashboard → API keys (not whsec_ or mk_).",
+      };
+    }
+  }
   const stripe = adminSkipApplied ? null : getStripe();
   if (!adminSkipApplied && !stripe) {
     return { error: "Payment is not configured (Stripe or Supabase service role)." };

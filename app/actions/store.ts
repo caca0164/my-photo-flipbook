@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
-import { getStripe } from "@/lib/stripe-server";
+import { getStripe, getStripeSecretKeyIssue } from "@/lib/stripe-server";
 import type { CartLine } from "@/lib/store-types";
 import type { Locale } from "@/lib/i18n";
 import { headers } from "next/headers";
@@ -39,6 +39,13 @@ export async function createStoreCheckoutSession(input: {
   customerPhone: string;
   shippingAddress: string;
 }) {
+  const keyIssue = getStripeSecretKeyIssue();
+  if (keyIssue === "invalid_format") {
+    return {
+      error:
+        "STRIPE_SECRET_KEY must be sk_live_ or sk_test_ from Stripe Dashboard → API keys (not whsec_ or mk_).",
+    };
+  }
   const stripe = getStripe();
   const svc = createServiceRoleClient();
   if (!stripe) {
