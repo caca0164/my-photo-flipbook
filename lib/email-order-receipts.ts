@@ -60,10 +60,9 @@ export type BookingOrderPaidRow = {
   notes: string;
 };
 
-export async function sendBookingOrderPaidEmails(svc: SupabaseClient, row: BookingOrderPaidRow): Promise<void> {
+function bookingPaidEmailHtml(row: BookingOrderPaidRow): { html: string; subject: string } {
   const loc = isLocale(row.locale) ? row.locale : "en";
   const t = getMessages(loc);
-  const accountEmail = await getAuthUserEmailById(svc, row.user_id);
   const labels = bookingLabels(loc);
   const html = buildBookingPaidEmailHtml({
     localeTag: localeTag(loc),
@@ -78,12 +77,30 @@ export async function sendBookingOrderPaidEmails(svc: SupabaseClient, row: Booki
     slotLabel: formatBookingSlotHk(row.slot_start, row.slot_end, loc),
     notes: row.notes,
   });
+  return { html, subject: t.emailSubjectBookingPaid };
+}
 
+export async function sendBookingOrderPaidEmails(svc: SupabaseClient, row: BookingOrderPaidRow): Promise<void> {
+  const accountEmail = await getAuthUserEmailById(svc, row.user_id);
+  const { html, subject } = bookingPaidEmailHtml(row);
   await sendOutboundEmail({
-    subject: t.emailSubjectBookingPaid,
+    subject,
     html,
     to: [row.customer_email],
     cc: accountEmail ? [accountEmail] : [],
+  });
+}
+
+/** Resend booking invoice/confirmation to a single address (e.g. member self-service). */
+export async function sendBookingOrderPaidReceiptToEmail(
+  row: BookingOrderPaidRow,
+  toEmail: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { html, subject } = bookingPaidEmailHtml(row);
+  return sendOutboundEmail({
+    subject,
+    html,
+    to: [toEmail],
   });
 }
 

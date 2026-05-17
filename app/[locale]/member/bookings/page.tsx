@@ -1,3 +1,4 @@
+import MemberBookingReceiptButton from "@/app/components/MemberBookingReceiptButton";
 import { requireMember } from "@/lib/auth/member";
 import { createClient } from "@/lib/supabase/server";
 import { formatBookingSlotHk } from "@/lib/booking-hk-display";
@@ -66,6 +67,7 @@ export default async function MemberBookingsPage({ params }: Props) {
                   <th className="px-4 py-3">{t.memberBookingsTotal}</th>
                   <th className="px-4 py-3">{t.memberBookingsSlot}</th>
                   <th className="px-4 py-3">{t.memberBookingsCreated}</th>
+                  <th className="px-4 py-3">{t.memberBookingsActions}</th>
                 </tr>
               </thead>
               <tbody>
@@ -79,6 +81,13 @@ export default async function MemberBookingsPage({ params }: Props) {
                     </td>
                     <td className="px-4 py-3 text-zinc-400">
                       {new Date(r.created_at).toLocaleString(locale === "zh" ? "zh-HK" : "en-HK")}
+                    </td>
+                    <td className="px-4 py-3">
+                      {r.status === "paid" ? (
+                        <MemberBookingReceiptButton locale={locale} orderId={r.id} />
+                      ) : (
+                        <span className="text-xs text-zinc-600">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}
