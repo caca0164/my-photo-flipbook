@@ -21,6 +21,7 @@ type BookingPriceCentsKey =
   | "price_hours_4_cents"
   | "price_hours_10_cents"
   | "price_makeup_yes_cents"
+  | "price_makeup_yes_both_cents"
   | "price_makeup_no_cents"
   | "price_female_assistant_yes_cents"
   | "price_female_assistant_no_cents";
@@ -61,6 +62,7 @@ export default function BookingAdminClient({
         price_hours_4_cents: row.price_hours_4_cents ?? 0,
         price_hours_10_cents: row.price_hours_10_cents,
         price_makeup_yes_cents: row.price_makeup_yes_cents,
+        price_makeup_yes_both_cents: row.price_makeup_yes_both_cents ?? 0,
         price_makeup_no_cents: row.price_makeup_no_cents,
         price_female_assistant_yes_cents: row.price_female_assistant_yes_cents ?? 0,
         price_female_assistant_no_cents: row.price_female_assistant_no_cents ?? 0,
@@ -191,10 +193,11 @@ export default function BookingAdminClient({
 
         <div>
           <p className="text-sm font-medium text-zinc-300">{t.adminBookingMakeupPrices}</p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {(
               [
                 ["price_makeup_yes_cents", "Makeup yes"],
+                ["price_makeup_yes_both_cents", t.adminBookingMakeupYesBothPrice],
                 ["price_makeup_no_cents", "Makeup no"],
               ] as const
             ).map(([k, lab]) => (

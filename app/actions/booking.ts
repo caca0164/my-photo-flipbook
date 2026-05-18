@@ -59,6 +59,7 @@ function rowToPriceSnapshot(row: Record<string, unknown>): BookingPriceSnapshot 
     price_hours_4_cents: Number(row.price_hours_4_cents) || 0,
     price_hours_10_cents: Number(row.price_hours_10_cents) || 0,
     price_makeup_yes_cents: Number(row.price_makeup_yes_cents) || 0,
+    price_makeup_yes_both_cents: Number(row.price_makeup_yes_both_cents) || 0,
     price_makeup_no_cents: Number(row.price_makeup_no_cents) || 0,
     price_female_assistant_yes_cents: Number(row.price_female_assistant_yes_cents) || 0,
     price_female_assistant_no_cents: Number(row.price_female_assistant_no_cents) || 0,
@@ -135,7 +136,7 @@ function isHours(v: string): v is BookingHoursTier {
   return v === "h2" || v === "h3" || v === "h4" || v === "h10";
 }
 function isMakeup(v: string): v is BookingMakeup {
-  return v === "yes" || v === "no";
+  return v === "yes" || v === "no" || v === "yes_both";
 }
 function isFemaleAssistant(v: string): v is BookingFemaleAssistant {
   return v === "yes" || v === "no";
@@ -161,6 +162,9 @@ export async function createBookingCheckoutSession(input: {
   await connection();
   void (await headers()).get("x-forwarded-host");
   if (!isShoot(input.shoot) || !isParty(input.party) || !isHours(input.hours) || !isMakeup(input.makeup)) {
+    return { error: "Invalid booking options." };
+  }
+  if (input.makeup === "yes_both" && input.party !== "double") {
     return { error: "Invalid booking options." };
   }
   if (!bookingHoursTierValidForShoot(input.shoot, input.hours)) {

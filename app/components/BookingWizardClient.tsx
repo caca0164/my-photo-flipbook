@@ -10,6 +10,7 @@ import {
   type BookingShootType,
   BOOKING_TZ_OFFSET,
   bookingCalendarStep,
+  bookingHasMakeupArtist,
   bookingNeedsFemaleAssistantStep,
   bookingPayStep,
   bookingShowsBoudoirConfidentialityLink,
@@ -461,6 +462,7 @@ export default function BookingWizardClient({
               className={`${optClass} block w-full ${party === id ? "border-amber-400 ring-1 ring-amber-400/30" : ""}`}
               onClick={() => {
                 setParty(id);
+                if (id === "single") setMakeup((m) => (m === "yes_both" ? null : m));
                 setStep(3);
               }}
             >
@@ -492,11 +494,20 @@ export default function BookingWizardClient({
       {step === 4 ? (
         <div className="space-y-3">
           <h2 className="text-lg font-medium text-zinc-100">{t.bookingMakeupTitle}</h2>
+          {party === "double" ? (
+            <p className="text-sm leading-relaxed text-zinc-400">{t.bookingMakeupYesBothHint}</p>
+          ) : null}
           {(
-            [
-              ["yes", t.bookingMakeupYes],
-              ["no", t.bookingMakeupNo],
-            ] as const
+            party === "double"
+              ? ([
+                  ["yes", t.bookingMakeupYes],
+                  ["yes_both", t.bookingMakeupYesBoth],
+                  ["no", t.bookingMakeupNo],
+                ] as const)
+              : ([
+                  ["yes", t.bookingMakeupYes],
+                  ["no", t.bookingMakeupNo],
+                ] as const)
           ).map(([id, label]) => (
             <button
               key={id}
@@ -774,16 +785,20 @@ export default function BookingWizardClient({
             </p>
             <p className="mt-1">
               <span className="text-zinc-500">{t.bookingSummaryMakeup}</span>{" "}
-              {makeup === "yes" ? t.bookingMakeupYes : t.bookingMakeupNo}
+              {makeup === "yes"
+                ? t.bookingMakeupYes
+                : makeup === "yes_both"
+                  ? t.bookingMakeupYesBoth
+                  : t.bookingMakeupNo}
             </p>
             <p className="mt-1">
               <span className="text-zinc-500">{t.bookingSummaryWhen}</span> {selectedYmd}{" "}
               {formatSlotRangeLabel(selectedTime, hoursTierToDurationHours(hours))} (UTC+8)
             </p>
-            {makeup === "yes" ? (
+            {bookingHasMakeupArtist(makeup) ? (
               <p className="mt-1">
                 <span className="text-zinc-500">{t.bookingSummaryMakeupStart}</span>{" "}
-                {computeMakeupStartYmdHm(selectedYmd, selectedTime, shoot)} (UTC+8)
+                {computeMakeupStartYmdHm(selectedYmd, selectedTime, shoot, makeup)} (UTC+8)
               </p>
             ) : null}
             {needsFemaleAssistant && femaleAssistant ? (

@@ -39,7 +39,12 @@ function bookingLabels(locale: Locale) {
         : v === "h10"
           ? t.bookingHoursFullDay
           : t.bookingHours2;
-  const makeup = (v: string) => (v === "yes" ? t.bookingMakeupYes : t.bookingMakeupNo);
+  const makeup = (v: string) =>
+    v === "yes"
+      ? t.bookingMakeupYes
+      : v === "yes_both"
+        ? t.bookingMakeupYesBoth
+        : t.bookingMakeupNo;
   return { shoot, party, hours, makeup };
 }
 

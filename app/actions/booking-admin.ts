@@ -44,6 +44,7 @@ export type BookingAdminConfigRow = {
   price_hours_4_cents: number;
   price_hours_10_cents: number;
   price_makeup_yes_cents: number;
+  price_makeup_yes_both_cents: number;
   price_makeup_no_cents: number;
   price_female_assistant_yes_cents: number;
   price_female_assistant_no_cents: number;
@@ -68,6 +69,7 @@ export async function getBookingAdminConfig(): Promise<{ error?: string; row?: B
   const row = {
     ...data,
     price_hours_4_cents: Number(d.price_hours_4_cents) || 0,
+    price_makeup_yes_both_cents: Number(d.price_makeup_yes_both_cents) || 0,
   } as BookingAdminConfigRow;
   return { row };
 }
@@ -86,6 +88,7 @@ export async function updateBookingAdminConfig(input: {
   price_hours_4_cents: number;
   price_hours_10_cents: number;
   price_makeup_yes_cents: number;
+  price_makeup_yes_both_cents: number;
   price_makeup_no_cents: number;
   price_female_assistant_yes_cents: number;
   price_female_assistant_no_cents: number;
@@ -125,6 +128,7 @@ export async function updateBookingAdminConfig(input: {
       price_hours_4_cents: clamp(input.price_hours_4_cents),
       price_hours_10_cents: clamp(input.price_hours_10_cents),
       price_makeup_yes_cents: clamp(input.price_makeup_yes_cents),
+      price_makeup_yes_both_cents: clamp(input.price_makeup_yes_both_cents),
       price_makeup_no_cents: clamp(input.price_makeup_no_cents),
       price_female_assistant_yes_cents: clamp(input.price_female_assistant_yes_cents),
       price_female_assistant_no_cents: clamp(input.price_female_assistant_no_cents),

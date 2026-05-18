@@ -16,7 +16,11 @@ export function bookingHourTiersForShoot(shoot: BookingShootType): readonly Book
 export function bookingHoursTierValidForShoot(shoot: BookingShootType, tier: BookingHoursTier): boolean {
   return (bookingHourTiersForShoot(shoot) as readonly string[]).includes(tier);
 }
-export type BookingMakeup = "yes" | "no";
+export type BookingMakeup = "yes" | "no" | "yes_both";
+
+export function bookingHasMakeupArtist(makeup: BookingMakeup | null): boolean {
+  return makeup === "yes" || makeup === "yes_both";
+}
 export type BookingFemaleAssistant = "yes" | "no";
 
 /** Boudoir + no makeup: ask whether a female assistant is needed before calendar. */
@@ -88,6 +92,7 @@ export type BookingPriceSnapshot = {
   price_hours_4_cents: number;
   price_hours_10_cents: number;
   price_makeup_yes_cents: number;
+  price_makeup_yes_both_cents: number;
   price_makeup_no_cents: number;
   price_female_assistant_yes_cents: number;
   price_female_assistant_no_cents: number;
@@ -132,7 +137,12 @@ export function computeBookingTotalCents(
         : hours === "h4"
           ? p.price_hours_4_cents
           : p.price_hours_10_cents;
-  const makeupC = makeup === "yes" ? p.price_makeup_yes_cents : p.price_makeup_no_cents;
+  const makeupC =
+    makeup === "yes"
+      ? p.price_makeup_yes_cents
+      : makeup === "yes_both"
+        ? p.price_makeup_yes_both_cents
+        : p.price_makeup_no_cents;
   let total = shootC + partyC + hoursC + makeupC;
   if (bookingNeedsFemaleAssistantStep(shoot, makeup) && femaleAssistant) {
     total +=

@@ -458,9 +458,11 @@ export default function BookingAdminOrdersClient({ locale }: { locale: Locale })
                 <dd className="mt-0.5">
                   {modalOrder.makeup === "yes"
                     ? t.bookingMakeupYes
-                    : modalOrder.makeup === "no"
-                      ? t.bookingMakeupNo
-                      : modalOrder.makeup}
+                    : modalOrder.makeup === "yes_both"
+                      ? t.bookingMakeupYesBoth
+                      : modalOrder.makeup === "no"
+                        ? t.bookingMakeupNo
+                        : modalOrder.makeup}
                 </dd>
               </div>
               {modalOrder.shoot_type === "boudoir" &&

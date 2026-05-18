@@ -23,6 +23,7 @@ const zeroPrices: BookingPriceSnapshot = {
   price_hours_4_cents: 0,
   price_hours_10_cents: 0,
   price_makeup_yes_cents: 0,
+  price_makeup_yes_both_cents: 0,
   price_makeup_no_cents: 0,
   price_female_assistant_yes_cents: 0,
   price_female_assistant_no_cents: 0,

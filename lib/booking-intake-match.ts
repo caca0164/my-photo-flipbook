@@ -6,7 +6,7 @@ export type IntakeOptionJson = { id: string; label_en: string; label_zh: string 
 export const POST_PAID_MATCH_ALL_SHOOT = ["portrait", "boudoir", "prewedding"] as const;
 export const POST_PAID_MATCH_ALL_PARTY = ["single", "double", "group"] as const;
 export const POST_PAID_MATCH_ALL_HOURS = ["h2", "h3", "h4", "h10"] as const;
-export const POST_PAID_MATCH_ALL_MAKEUP = ["yes", "no"] as const;
+export const POST_PAID_MATCH_ALL_MAKEUP = ["yes", "yes_both", "no"] as const;
 export const POST_PAID_MATCH_ALL_FA = ["yes", "no"] as const;
 export const POST_PAID_MATCH_ALL_WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;
 

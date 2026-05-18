@@ -11,7 +11,7 @@ const SHOOT = ["portrait", "boudoir", "prewedding"] as const;
 const PARTY = ["single", "double", "group"] as const;
 const HOURS = ["h2", "h3", "h4", "h10"] as const satisfies readonly BookingHoursTier[];
 const SLOT_TIMES = bookingAllSlotStartTimesHm();
-const MAKEUP = ["yes", "no"] as const;
+const MAKEUP = ["yes", "yes_both", "no"] as const;
 const FA = ["yes", "no"] as const;
 const WD = [0, 1, 2, 3, 4, 5, 6] as const;
 
@@ -143,7 +143,11 @@ export default function BookingPostPaidMatchFilters({
               checked={(values.match_makeup ?? []).includes(v)}
               onChange={() => onChange({ match_makeup: toggleStr(values.match_makeup, v) })}
             />
-            {v}
+            {v === "yes"
+              ? t.bookingMakeupYes
+              : v === "yes_both"
+                ? t.bookingMakeupYesBoth
+                : t.bookingMakeupNo}
           </label>
         ))}
       </div>

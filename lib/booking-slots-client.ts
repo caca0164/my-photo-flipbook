@@ -5,6 +5,7 @@ import {
   BOOKING_TZ_OFFSET,
   bookingTodayYmdHk,
   type BookingHoursTier,
+  type BookingMakeup,
   type BookingShootType,
   hoursTierToDurationHours,
 } from "@/lib/booking-types";
@@ -202,8 +203,13 @@ export function isoUtcToHkYmdHm(iso: string): { ymd: string; hm: string } {
 }
 
 /** Hours before shoot slot start when makeup begins (pre-wedding needs longer prep). */
-export function makeupLeadHoursBeforeShoot(shoot: BookingShootType): number {
-  return shoot === "prewedding" ? 2.5 : 1;
+export function makeupLeadHoursBeforeShoot(
+  shoot: BookingShootType,
+  makeup?: BookingMakeup | null,
+): number {
+  let h = shoot === "prewedding" ? 2.5 : 1;
+  if (makeup === "yes_both") h += 1;
+  return h;
 }
 
 /** Makeup arrival as `YYYY-MM-DD HH:mm` in Hong Kong (UTC+8 wall clock). */
@@ -211,8 +217,9 @@ export function computeMakeupStartYmdHm(
   dateYmd: string,
   shootStartHm: string,
   shoot: BookingShootType,
+  makeup: BookingMakeup,
 ): string {
-  const leadH = makeupLeadHoursBeforeShoot(shoot);
+  const leadH = makeupLeadHoursBeforeShoot(shoot, makeup);
   const [h, m] = shootStartHm.split(":").map(Number);
   const startMs = new Date(`${dateYmd}T${pad2(h)}:${pad2(m)}:00${BOOKING_TZ_OFFSET}`).getTime();
   const makeupMs = startMs - leadH * 60 * 60 * 1000;

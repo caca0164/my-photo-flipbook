@@ -93,7 +93,12 @@ function labelsForBooking(locale: Locale) {
           : v === "h10"
             ? t.bookingHoursFullDay
             : t.bookingHours2,
-    makeup: (v: string) => (v === "yes" ? t.bookingMakeupYes : t.bookingMakeupNo),
+    makeup: (v: string) =>
+      v === "yes"
+        ? t.bookingMakeupYes
+        : v === "yes_both"
+          ? t.bookingMakeupYesBoth
+          : t.bookingMakeupNo,
     fa: (v: string) => (v === "yes" ? t.bookingFemaleAssistantYes : t.bookingFemaleAssistantNo),
   };
 }

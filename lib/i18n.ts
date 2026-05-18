@@ -239,6 +239,9 @@ export const messages = {
     bookingHoursFullDay: "Full Day",
     bookingMakeupTitle: "Makeup artist",
     bookingMakeupYes: "Need makeup artist",
+    bookingMakeupYesBoth: "Need makeup artist (both people need makeup)",
+    bookingMakeupYesBothHint:
+      "For two people: makeup starts one hour earlier than the standard makeup time.",
     bookingMakeupNo: "No makeup artist",
     bookingFemaleAssistantTitle: "Female assistant",
     bookingFemaleAssistantHint:
@@ -301,6 +304,7 @@ export const messages = {
     adminBookingPartyPrices: "Party size (HKD add-on)",
     adminBookingHourPrices: "Duration (HKD add-on)",
     adminBookingMakeupPrices: "Makeup (HKD add-on)",
+    adminBookingMakeupYesBothPrice: "Makeup — both people (double booking only)",
     adminBookingFemaleAssistantPrices: "Female assistant (HKD add-on)",
     adminBookingFemaleAssistantPricesHint:
       "Applies when Boudoir is selected without a makeup artist (customer chooses yes/no on the booking wizard).",
@@ -775,6 +779,8 @@ export const messages = {
     bookingHoursFullDay: "全日",
     bookingMakeupTitle: "化妝師",
     bookingMakeupYes: "需要化妝師",
+    bookingMakeupYesBoth: "需要化妝師（兩人皆需化妝）",
+    bookingMakeupYesBothHint: "兩人預約：化妝開始時間會比一般化妝再提早 1 小時。",
     bookingMakeupNo: "不需要",
     bookingFemaleAssistantTitle: "女助手協助",
     bookingFemaleAssistantHint: "Boudoir 拍攝如不需要化妝師，可選擇是否需要女助手在場協助。",
@@ -835,6 +841,7 @@ export const messages = {
     adminBookingPartyPrices: "人數（港元加價）",
     adminBookingHourPrices: "時長（港元加價）",
     adminBookingMakeupPrices: "化妝師（港元加價）",
+    adminBookingMakeupYesBothPrice: "化妝師 — 兩人皆化妝（僅限兩人預約）",
     adminBookingFemaleAssistantPrices: "女助手（港元加價）",
     adminBookingFemaleAssistantPricesHint:
       "僅在 Boudoir 且不需化妝師時，客戶於預約流程選擇「需要／不需要女助手」後計入總價。",
