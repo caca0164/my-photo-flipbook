@@ -240,8 +240,6 @@ export const messages = {
     bookingMakeupTitle: "Makeup artist",
     bookingMakeupYes: "Need makeup artist",
     bookingMakeupYesBoth: "Need makeup artist (both people need makeup)",
-    bookingMakeupYesBothHint:
-      "For two people: makeup starts one hour earlier than the standard makeup time.",
     bookingMakeupNo: "No makeup artist",
     bookingFemaleAssistantTitle: "Female assistant",
     bookingFemaleAssistantHint:
@@ -780,7 +778,6 @@ export const messages = {
     bookingMakeupTitle: "化妝師",
     bookingMakeupYes: "需要化妝師",
     bookingMakeupYesBoth: "需要化妝師（兩人皆需化妝）",
-    bookingMakeupYesBothHint: "兩人預約：化妝開始時間會比一般化妝再提早 1 小時。",
     bookingMakeupNo: "不需要",
     bookingFemaleAssistantTitle: "女助手協助",
     bookingFemaleAssistantHint: "Boudoir 拍攝如不需要化妝師，可選擇是否需要女助手在場協助。",

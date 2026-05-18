@@ -494,9 +494,6 @@ export default function BookingWizardClient({
       {step === 4 ? (
         <div className="space-y-3">
           <h2 className="text-lg font-medium text-zinc-100">{t.bookingMakeupTitle}</h2>
-          {party === "double" ? (
-            <p className="text-sm leading-relaxed text-zinc-400">{t.bookingMakeupYesBothHint}</p>
-          ) : null}
           {(
             party === "double"
               ? ([
