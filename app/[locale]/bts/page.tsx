@@ -1,5 +1,6 @@
-import BtsReelsFeed, { type BtsReelsItem } from "@/app/components/BtsReelsFeed";
+import BtsReelsFeed from "@/app/components/BtsReelsFeed";
 import { canViewPublicBtsPage, listBtsVideosPublic } from "@/app/actions/bts";
+import { mapBtsRowsToReelsItems } from "@/lib/bts-public";
 import { getMessages, isLocale, type Locale } from "@/lib/i18n";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -41,11 +42,7 @@ export default async function BtsPage({ params }: Props) {
     );
   }
 
-  const items: BtsReelsItem[] = videos.map((v) => ({
-    id: v.id,
-    videoId: v.youtube_video_id,
-    title: locale === "zh" ? v.title_zh || v.title_en : v.title_en || v.title_zh,
-  }));
+  const items = mapBtsRowsToReelsItems(videos, locale);
 
   return (
     <main className="bg-black">

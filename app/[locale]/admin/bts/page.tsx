@@ -1,6 +1,7 @@
 import BtsAdminClient from "@/app/components/BtsAdminClient";
 import { getBtsSettingsAdmin, listBtsVideosAdmin } from "@/app/actions/bts";
 import { requireAdmin } from "@/lib/auth/admin";
+import { cloudflareStreamConfigured } from "@/lib/cloudflare-stream";
 import { getMessages, isLocale, type Locale } from "@/lib/i18n";
 import { notFound } from "next/navigation";
 
@@ -39,6 +40,7 @@ export default async function AdminBtsPage({ params }: Props) {
         locale={locale}
         initialVideos={videos ?? []}
         initialPageHidden={settingsRes.settings?.page_hidden ?? false}
+        cloudflareEnabled={cloudflareStreamConfigured()}
       />
       {!process.env.NEXT_PUBLIC_SUPABASE_URL ? (
         <p className="px-4 pb-8 text-center text-xs text-amber-400">{t.adminAboutEnvHint}</p>

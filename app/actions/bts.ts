@@ -1,14 +1,23 @@
 "use server";
 
 import { getSessionProfile } from "@/lib/auth/admin";
+import {
+  cloudflareStreamConfigured,
+  createCloudflareStreamDirectUpload,
+  deleteCloudflareStreamVideo,
+} from "@/lib/cloudflare-stream";
 import { locales } from "@/lib/i18n";
 import { parseYouTubeVideoId } from "@/lib/youtube";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath, unstable_noStore as noStore } from "next/cache";
 
+export type BtsVideoSource = "youtube" | "cloudflare";
+
 export type BtsVideoRow = {
   id: string;
-  youtube_video_id: string;
+  video_source: BtsVideoSource;
+  youtube_video_id: string | null;
+  cloudflare_stream_uid: string | null;
   title_en: string;
   title_zh: string;
   sort_order: number;
@@ -122,6 +131,60 @@ export async function listBtsVideosAdmin(): Promise<{ error?: string; videos?: B
   return { videos: (data ?? []) as BtsVideoRow[] };
 }
 
+export async function createBtsCloudflareUploadAdmin(input?: {
+  name?: string;
+}): Promise<{ error?: string; uploadURL?: string; uid?: string }> {
+  noStore();
+  const session = await getSessionProfile();
+  if (!session || session.role !== "admin") return { error: "Forbidden" };
+  if (!cloudflareStreamConfigured()) {
+    return { error: "Cloudflare Stream is not configured on the server" };
+  }
+
+  const created = await createCloudflareStreamDirectUpload({
+    name: input?.name?.trim() || "BTS upload",
+    maxDurationSeconds: 600,
+  });
+  if (created.error || !created.result) return { error: created.error ?? "Upload init failed" };
+  return {
+    uploadURL: created.result.uploadURL,
+    uid: created.result.uid,
+  };
+}
+
+export async function registerBtsCloudflareVideoAdmin(input: {
+  uid: string;
+  title_en: string;
+  title_zh: string;
+  sort_order: number;
+  published: boolean;
+}): Promise<{ error?: string; ok?: boolean }> {
+  noStore();
+  const session = await getSessionProfile();
+  if (!session || session.role !== "admin") return { error: "Forbidden" };
+
+  const uid = input.uid.trim();
+  if (!uid) return { error: "Missing Cloudflare Stream video id" };
+
+  const supabase = await createClient();
+  const row = {
+    video_source: "cloudflare" as const,
+    youtube_video_id: null,
+    cloudflare_stream_uid: uid,
+    title_en: input.title_en.trim(),
+    title_zh: input.title_zh.trim(),
+    sort_order: Math.max(0, Math.floor(input.sort_order)),
+    published: input.published,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase.from("site_bts_videos").insert(row);
+  if (error) return { error: error.message };
+
+  revalidateBtsPaths();
+  return { ok: true };
+}
+
 export async function upsertBtsVideoAdmin(input: {
   id?: string | null;
   youtubeInput: string;
@@ -139,7 +202,9 @@ export async function upsertBtsVideoAdmin(input: {
 
   const supabase = await createClient();
   const row = {
+    video_source: "youtube" as const,
     youtube_video_id: videoId,
+    cloudflare_stream_uid: null,
     title_en: input.title_en.trim(),
     title_zh: input.title_zh.trim(),
     sort_order: Math.max(0, Math.floor(input.sort_order)),
@@ -159,14 +224,59 @@ export async function upsertBtsVideoAdmin(input: {
   return { ok: true };
 }
 
+export async function updateBtsVideoMetaAdmin(input: {
+  id: string;
+  title_en: string;
+  title_zh: string;
+  sort_order: number;
+  published: boolean;
+}): Promise<{ error?: string; ok?: boolean }> {
+  noStore();
+  const session = await getSessionProfile();
+  if (!session || session.role !== "admin") return { error: "Forbidden" };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("site_bts_videos")
+    .update({
+      title_en: input.title_en.trim(),
+      title_zh: input.title_zh.trim(),
+      sort_order: Math.max(0, Math.floor(input.sort_order)),
+      published: input.published,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.id);
+
+  if (error) return { error: error.message };
+  revalidateBtsPaths();
+  return { ok: true };
+}
+
 export async function deleteBtsVideoAdmin(id: string): Promise<{ error?: string; ok?: boolean }> {
   noStore();
   const session = await getSessionProfile();
   if (!session || session.role !== "admin") return { error: "Forbidden" };
 
   const supabase = await createClient();
+  const { data: existing, error: readErr } = await supabase
+    .from("site_bts_videos")
+    .select("cloudflare_stream_uid, video_source")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (readErr) return { error: readErr.message };
+
   const { error } = await supabase.from("site_bts_videos").delete().eq("id", id);
   if (error) return { error: error.message };
+
+  if (
+    existing?.video_source === "cloudflare" &&
+    existing.cloudflare_stream_uid &&
+    cloudflareStreamConfigured()
+  ) {
+    const removed = await deleteCloudflareStreamVideo(existing.cloudflare_stream_uid);
+    if (removed.error) return { error: removed.error };
+  }
 
   revalidateBtsPaths();
   return { ok: true };

@@ -1,13 +1,20 @@
 "use client";
 
-import { youTubeEmbedSrc, youTubeThumbnailUrl } from "@/lib/youtube";
+import type { BtsVideoSource } from "@/app/actions/bts";
+import {
+  cloudflareStreamIframeSrc,
+  cloudflareStreamThumbnailUrl,
+} from "@/lib/cloudflare-stream";
 import { messages, type Locale } from "@/lib/i18n";
+import { youTubeEmbedSrc, youTubeThumbnailUrl } from "@/lib/youtube";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 export type BtsReelsItem = {
   id: string;
-  videoId: string;
+  source: BtsVideoSource;
+  youtubeVideoId: string | null;
+  cloudflareStreamUid: string | null;
   title: string;
 };
 
@@ -116,29 +123,53 @@ export default function BtsReelsFeed({
     setSoundOn((on) => !on);
   }
 
-  function renderVideoStage(video: BtsReelsItem, slideIndex: number) {
-    const thumb = youTubeThumbnailUrl(video.videoId);
-    const isPlaying = slideIndex === playingIndex;
-    const embedSrc = youTubeEmbedSrc(video.videoId, {
+  function btsThumbnail(video: BtsReelsItem): string {
+    if (video.source === "cloudflare" && video.cloudflareStreamUid) {
+      return cloudflareStreamThumbnailUrl(video.cloudflareStreamUid);
+    }
+    if (video.youtubeVideoId) return youTubeThumbnailUrl(video.youtubeVideoId);
+    return "";
+  }
+
+  function btsEmbedSrc(video: BtsReelsItem, isPlaying: boolean): string {
+    const opts = {
       autoplay: isPlaying,
       mute: !soundOn,
       loop: true,
-      controls: true,
-    });
+      controls: true as const,
+    };
+    if (video.source === "cloudflare" && video.cloudflareStreamUid) {
+      return cloudflareStreamIframeSrc(video.cloudflareStreamUid, opts);
+    }
+    if (video.youtubeVideoId) return youTubeEmbedSrc(video.youtubeVideoId, opts);
+    return "";
+  }
+
+  function renderVideoStage(video: BtsReelsItem, slideIndex: number) {
+    const thumb = btsThumbnail(video);
+    const isPlaying = slideIndex === playingIndex;
+    const embedSrc = btsEmbedSrc(video, isPlaying);
+    const playerKey =
+      video.source === "cloudflare"
+        ? `${video.cloudflareStreamUid}-${soundOn ? "sound" : "muted"}`
+        : `${video.youtubeVideoId}-${soundOn ? "sound" : "muted"}`;
 
     return (
       <div className="absolute inset-0 overflow-hidden bg-black">
-        <img src={thumb} alt="" aria-hidden style={BLUR_BG_STYLE} />
+        {thumb ? <img src={thumb} alt="" aria-hidden style={BLUR_BG_STYLE} /> : null}
         <div className="relative z-[1] mx-auto shrink-0 overflow-hidden bg-black" style={VIDEO_COL_STYLE}>
-          {isPlaying ? (
+          {isPlaying && embedSrc ? (
             <div className="absolute inset-0 overflow-hidden">
               <iframe
-                key={`${video.videoId}-${soundOn ? "sound" : "muted"}`}
+                key={playerKey}
                 src={embedSrc}
-                title={video.title.trim() || "YouTube video"}
+                title={video.title.trim() || "BTS video"}
                 className="absolute left-1/2 top-1/2 h-full w-full border-0"
                 style={{
-                  transform: "translate(-50%, -50%) scale(1.42)",
+                  transform:
+                    video.source === "youtube"
+                      ? "translate(-50%, -50%) scale(1.42)"
+                      : "translate(-50%, -50%)",
                   transformOrigin: "center center",
                 }}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

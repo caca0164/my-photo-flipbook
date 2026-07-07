@@ -1,11 +1,11 @@
 import AboutPageShell from "@/app/components/AboutPageShell";
-import BtsReelsFeed, { type BtsReelsItem } from "@/app/components/BtsReelsFeed";
+import BtsReelsFeed from "@/app/components/BtsReelsFeed";
 import { getSiteAboutPublic } from "@/app/actions/about";
 import { getAlbumFlipCoverPublic, listAlbumPagesForPublic } from "@/app/actions/album";
 import { listBtsVideosPublic } from "@/app/actions/bts";
 import type { FlipBookPage } from "@/lib/album-types";
+import { mapBtsRowsToReelsItems } from "@/lib/bts-public";
 import { getMessages, isLocale, type Locale } from "@/lib/i18n";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -32,12 +32,7 @@ export default async function AboutPage({ params }: Props) {
   ]);
   const extra = locale === "zh" ? (row?.content_zh ?? "") : (row?.content_en ?? "");
   const pages = albumPages.length > 0 ? albumPages : DEMO_PAGES;
-  const btsItems: BtsReelsItem[] =
-    btsVideos?.map((v) => ({
-      id: v.id,
-      videoId: v.youtube_video_id,
-      title: locale === "zh" ? v.title_zh || v.title_en : v.title_en || v.title_zh,
-    })) ?? [];
+  const btsItems = mapBtsRowsToReelsItems(btsVideos ?? [], locale);
 
   const hasBts = btsItems.length > 0;
 
@@ -51,15 +46,6 @@ export default async function AboutPage({ params }: Props) {
       ) : extra.trim() ? (
         <div className="mt-8 whitespace-pre-wrap text-sm leading-relaxed text-zinc-200">{extra}</div>
       ) : null}
-
-      <p className="mt-12 text-center">
-        <Link
-          href={`/${locale}`}
-          className="text-sm text-zinc-400 underline-offset-4 hover:text-zinc-200"
-        >
-          {t.backHome}
-        </Link>
-      </p>
     </article>
   );
 

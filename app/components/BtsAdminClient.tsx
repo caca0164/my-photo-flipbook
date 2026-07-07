@@ -1,34 +1,44 @@
 "use client";
 
 import {
+  createBtsCloudflareUploadAdmin,
   deleteBtsVideoAdmin,
+  registerBtsCloudflareVideoAdmin,
   setBtsPageHiddenAdmin,
+  updateBtsVideoMetaAdmin,
   upsertBtsVideoAdmin,
   type BtsVideoRow,
+  type BtsVideoSource,
 } from "@/app/actions/bts";
 import { messages, type Locale } from "@/lib/i18n";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 
 export default function BtsAdminClient({
   locale,
   initialVideos,
   initialPageHidden,
+  cloudflareEnabled,
 }: {
   locale: Locale;
   initialVideos: BtsVideoRow[];
   initialPageHidden: boolean;
+  cloudflareEnabled: boolean;
 }) {
   const t = messages[locale];
   const router = useRouter();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [pageHidden, setPageHidden] = useState(initialPageHidden);
   const [visibilitySaved, setVisibilitySaved] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingSource, setEditingSource] = useState<BtsVideoSource>("youtube");
+  const [cloudflareUid, setCloudflareUid] = useState("");
   const [youtubeInput, setYoutubeInput] = useState("");
   const [titleEn, setTitleEn] = useState("");
   const [titleZh, setTitleZh] = useState("");
@@ -37,6 +47,8 @@ export default function BtsAdminClient({
 
   function resetForm() {
     setEditingId(null);
+    setEditingSource("youtube");
+    setCloudflareUid("");
     setYoutubeInput("");
     setTitleEn("");
     setTitleZh("");
@@ -44,11 +56,16 @@ export default function BtsAdminClient({
     setPublished(true);
     setErr(null);
     setSaved(false);
+    if (fileRef.current) fileRef.current.value = "";
   }
 
   function loadVideo(v: BtsVideoRow) {
     setEditingId(v.id);
-    setYoutubeInput(`https://www.youtube.com/watch?v=${v.youtube_video_id}`);
+    setEditingSource(v.video_source);
+    setCloudflareUid(v.cloudflare_stream_uid ?? "");
+    setYoutubeInput(
+      v.youtube_video_id ? `https://www.youtube.com/watch?v=${v.youtube_video_id}` : "",
+    );
     setTitleEn(v.title_en);
     setTitleZh(v.title_zh);
     setSortOrder(String(v.sort_order));
@@ -62,6 +79,24 @@ export default function BtsAdminClient({
     setErr(null);
     setSaved(false);
     start(async () => {
+      if (editingId && editingSource === "cloudflare") {
+        const r = await updateBtsVideoMetaAdmin({
+          id: editingId,
+          title_en: titleEn,
+          title_zh: titleZh,
+          sort_order: Number.parseInt(sortOrder, 10) || 0,
+          published,
+        });
+        if (r.error) {
+          setErr(r.error);
+          return;
+        }
+        setSaved(true);
+        resetForm();
+        router.refresh();
+        return;
+      }
+
       const r = await upsertBtsVideoAdmin({
         id: editingId,
         youtubeInput,
@@ -78,6 +113,53 @@ export default function BtsAdminClient({
       resetForm();
       router.refresh();
     });
+  }
+
+  async function onUploadCloudflare() {
+    const file = fileRef.current?.files?.[0];
+    if (!file) {
+      setErr(locale === "zh" ? "請選擇影片檔案。" : "Choose a video file.");
+      return;
+    }
+
+    setErr(null);
+    setSaved(false);
+    setUploading(true);
+    try {
+      const init = await createBtsCloudflareUploadAdmin({ name: file.name });
+      if (init.error || !init.uploadURL || !init.uid) {
+        setErr(init.error ?? t.adminBtsCloudflareUploadFailed);
+        return;
+      }
+
+      const body = new FormData();
+      body.append("file", file);
+      const uploadRes = await fetch(init.uploadURL, { method: "POST", body });
+      if (!uploadRes.ok) {
+        setErr(t.adminBtsCloudflareUploadFailed);
+        return;
+      }
+
+      const reg = await registerBtsCloudflareVideoAdmin({
+        uid: init.uid,
+        title_en: titleEn,
+        title_zh: titleZh,
+        sort_order: Number.parseInt(sortOrder, 10) || 0,
+        published,
+      });
+      if (reg.error) {
+        setErr(reg.error);
+        return;
+      }
+
+      setSaved(true);
+      resetForm();
+      router.refresh();
+    } catch (uploadErr) {
+      setErr(uploadErr instanceof Error ? uploadErr.message : t.adminBtsCloudflareUploadFailed);
+    } finally {
+      setUploading(false);
+    }
   }
 
   function onTogglePageHidden() {
@@ -108,6 +190,8 @@ export default function BtsAdminClient({
     });
   }
 
+  const busy = pending || uploading;
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
@@ -127,7 +211,7 @@ export default function BtsAdminClient({
           <input
             type="checkbox"
             checked={pageHidden}
-            disabled={pending}
+            disabled={busy}
             onChange={() => onTogglePageHidden()}
             className="mt-1 rounded border-zinc-600"
           />
@@ -141,24 +225,72 @@ export default function BtsAdminClient({
         ) : null}
       </section>
 
+      <section className="mb-8 space-y-4 rounded-2xl border border-zinc-800 bg-zinc-900/30 p-6">
+        <div>
+          <h2 className="text-sm font-medium text-zinc-200">{t.adminBtsCloudflareTitle}</h2>
+          <p className="mt-2 text-sm text-zinc-500">{t.adminBtsCloudflareHint}</p>
+        </div>
+        {!cloudflareEnabled ? (
+          <p className="text-sm text-amber-300">{t.adminBtsCloudflareNotConfigured}</p>
+        ) : (
+          <>
+            <label className="block text-sm font-medium text-zinc-300">
+              {t.adminBtsCloudflareFile}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="video/*"
+                disabled={busy}
+                className="mt-2 block w-full text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-800 file:px-3 file:py-2 file:text-sm file:text-zinc-200"
+              />
+            </label>
+            <p className="text-xs text-zinc-500">
+              {locale === "zh"
+                ? "標題、排序與發布設定會沿用下方欄位。"
+                : "Title, sort order, and publish settings use the fields below."}
+            </p>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void onUploadCloudflare()}
+              className="rounded-lg bg-sky-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+            >
+              {uploading ? t.adminBtsCloudflareUploading : t.adminBtsCloudflareUpload}
+            </button>
+          </>
+        )}
+      </section>
+
       <form
         onSubmit={onSave}
         className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-900/30 p-6"
       >
-        <label className="block text-sm font-medium text-zinc-300">
-          {t.adminBtsYoutube}
-          <input
-            type="text"
-            value={youtubeInput}
-            onChange={(e) => {
-              setYoutubeInput(e.target.value);
-              setSaved(false);
-            }}
-            required
-            placeholder="https://www.youtube.com/watch?v=…"
-            className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
-          />
-        </label>
+        {editingSource === "cloudflare" && cloudflareUid ? (
+          <label className="block text-sm font-medium text-zinc-300">
+            {t.adminBtsCloudflareUid}
+            <input
+              type="text"
+              value={cloudflareUid}
+              readOnly
+              className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-400"
+            />
+          </label>
+        ) : (
+          <label className="block text-sm font-medium text-zinc-300">
+            {t.adminBtsYoutube}
+            <input
+              type="text"
+              value={youtubeInput}
+              onChange={(e) => {
+                setYoutubeInput(e.target.value);
+                setSaved(false);
+              }}
+              required={!editingId || editingSource === "youtube"}
+              placeholder="https://www.youtube.com/watch?v=…"
+              className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
+            />
+          </label>
+        )}
         <label className="block text-sm font-medium text-zinc-300">
           {t.adminBtsTitleEn}
           <input
@@ -203,7 +335,7 @@ export default function BtsAdminClient({
         <div className="flex flex-wrap gap-2">
           <button
             type="submit"
-            disabled={pending}
+            disabled={busy}
             className="rounded-lg bg-amber-500 px-5 py-2.5 text-sm font-medium text-zinc-950 hover:bg-amber-400 disabled:opacity-50"
           >
             {editingId ? t.adminBtsSave : t.adminBtsAdd}
@@ -211,7 +343,7 @@ export default function BtsAdminClient({
           {editingId ? (
             <button
               type="button"
-              disabled={pending}
+              disabled={busy}
               onClick={() => resetForm()}
               className="rounded-lg border border-zinc-700 px-5 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
             >
@@ -227,6 +359,9 @@ export default function BtsAdminClient({
         ) : (
           initialVideos.map((v) => {
             const title = locale === "zh" ? v.title_zh || v.title_en : v.title_en || v.title_zh;
+            const sourceLabel =
+              v.video_source === "cloudflare" ? t.adminBtsSourceCloudflare : t.adminBtsSourceYoutube;
+            const ref = v.video_source === "cloudflare" ? v.cloudflare_stream_uid : v.youtube_video_id;
             return (
               <li
                 key={v.id}
@@ -234,10 +369,11 @@ export default function BtsAdminClient({
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-zinc-100">
-                    {title || v.youtube_video_id}
+                    {title || ref || v.id}
                   </p>
                   <p className="mt-0.5 text-xs text-zinc-500">
-                    {v.youtube_video_id}
+                    {sourceLabel}
+                    {ref ? ` · ${ref}` : null}
                     {!v.published ? ` · ${t.adminBtsUnpublished}` : null}
                     {` · #${v.sort_order}`}
                   </p>
@@ -245,7 +381,7 @@ export default function BtsAdminClient({
                 <div className="flex shrink-0 gap-2">
                   <button
                     type="button"
-                    disabled={pending}
+                    disabled={busy}
                     onClick={() => loadVideo(v)}
                     className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
                   >
@@ -253,7 +389,7 @@ export default function BtsAdminClient({
                   </button>
                   <button
                     type="button"
-                    disabled={pending}
+                    disabled={busy}
                     onClick={() => onDelete(v.id)}
                     className="rounded-lg border border-red-900/60 px-3 py-1.5 text-xs text-red-300 hover:bg-red-950/40 disabled:opacity-50"
                   >
