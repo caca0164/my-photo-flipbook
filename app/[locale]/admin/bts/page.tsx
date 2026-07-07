@@ -1,7 +1,7 @@
 import BtsAdminClient from "@/app/components/BtsAdminClient";
 import { getBtsSettingsAdmin, listBtsVideosAdmin } from "@/app/actions/bts";
 import { requireAdmin } from "@/lib/auth/admin";
-import { cloudflareStreamConfigured } from "@/lib/cloudflare-stream";
+import { cloudflareStreamConfigStatus, cloudflareStreamConfigured } from "@/lib/cloudflare-stream";
 import { getMessages, isLocale, type Locale } from "@/lib/i18n";
 import { notFound } from "next/navigation";
 
@@ -34,6 +34,8 @@ export default async function AdminBtsPage({ params }: Props) {
     );
   }
 
+  const cloudflareStatus = cloudflareStreamConfigStatus();
+
   return (
     <main className="min-h-[100dvh] bg-zinc-950 text-zinc-100">
       <BtsAdminClient
@@ -42,6 +44,14 @@ export default async function AdminBtsPage({ params }: Props) {
         initialPageHidden={settingsRes.settings?.page_hidden ?? false}
         cloudflareEnabled={cloudflareStreamConfigured()}
       />
+      {!cloudflareStatus.ok ? (
+        <div className="mx-auto max-w-2xl px-4 pb-8">
+          <p className="rounded-xl border border-amber-900/50 bg-amber-950/30 px-4 py-3 text-xs text-amber-200">
+            {locale === "zh" ? "Cloudflare Stream 缺少環境變數：" : "Cloudflare Stream missing env:"}{" "}
+            {cloudflareStatus.missing.join(", ")}
+          </p>
+        </div>
+      ) : null}
       {!process.env.NEXT_PUBLIC_SUPABASE_URL ? (
         <p className="px-4 pb-8 text-center text-xs text-amber-400">{t.adminAboutEnvHint}</p>
       ) : null}

@@ -5,17 +5,30 @@ export type CloudflareStreamEmbedOptions = {
   controls?: boolean;
 };
 
+function getCustomerCode(): string | null {
+  const code =
+    process.env.NEXT_PUBLIC_CLOUDFLARE_STREAM_CUSTOMER_CODE?.trim() ||
+    process.env.CLOUDFLARE_STREAM_CUSTOMER_CODE?.trim();
+  return code || null;
+}
+
+export function cloudflareStreamConfigStatus(): { ok: boolean; missing: string[] } {
+  const missing: string[] = [];
+  if (!process.env.CLOUDFLARE_ACCOUNT_ID?.trim()) missing.push("CLOUDFLARE_ACCOUNT_ID");
+  if (!process.env.CLOUDFLARE_API_TOKEN?.trim()) missing.push("CLOUDFLARE_API_TOKEN");
+  if (!getCustomerCode())
+    missing.push(
+      "NEXT_PUBLIC_CLOUDFLARE_STREAM_CUSTOMER_CODE (or CLOUDFLARE_STREAM_CUSTOMER_CODE)",
+    );
+  return { ok: missing.length === 0, missing };
+}
+
 export function cloudflareStreamConfigured(): boolean {
-  return Boolean(
-    process.env.CLOUDFLARE_ACCOUNT_ID?.trim() &&
-      process.env.CLOUDFLARE_API_TOKEN?.trim() &&
-      process.env.NEXT_PUBLIC_CLOUDFLARE_STREAM_CUSTOMER_CODE?.trim(),
-  );
+  return cloudflareStreamConfigStatus().ok;
 }
 
 export function cloudflareStreamCustomerCode(): string | null {
-  const code = process.env.NEXT_PUBLIC_CLOUDFLARE_STREAM_CUSTOMER_CODE?.trim();
-  return code || null;
+  return getCustomerCode();
 }
 
 export function cloudflareStreamThumbnailUrl(uid: string): string {
