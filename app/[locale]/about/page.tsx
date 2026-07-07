@@ -37,7 +37,7 @@ export default async function AboutPage({ params }: Props) {
   const hasBts = btsItems.length > 0;
 
   const profileArticle = (
-    <article className="mx-auto flex min-h-full max-w-xl flex-col px-4 py-12">
+    <article className="mx-auto flex max-w-xl flex-col px-4 py-12">
       <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">{t.aboutTitle}</h1>
       <p className="mt-6 text-lg text-zinc-100">{t.aboutPhotographerLead}</p>
 

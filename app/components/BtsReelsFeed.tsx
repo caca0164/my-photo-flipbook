@@ -33,11 +33,6 @@ const SCROLL_STYLE: CSSProperties = {
   WebkitOverflowScrolling: "touch",
 };
 
-const SLIDE_SNAP_STYLE: CSSProperties = {
-  scrollSnapAlign: "start",
-  scrollSnapStop: "always",
-};
-
 export default function BtsReelsFeed({
   locale,
   pageTitle,
@@ -50,9 +45,13 @@ export default function BtsReelsFeed({
   const t = messages[locale];
   const scrollRef = useRef<HTMLDivElement>(null);
   const [playingIndex, setPlayingIndex] = useState(0);
-  const [soundOn, setSoundOn] = useState(true);
+  const [soundOn, setSoundOn] = useState(false);
   const videoOffset = leadingSlot ? 1 : 0;
   const slideCount = videos.length + videoOffset;
+  const slideSnapStyle: CSSProperties = {
+    scrollSnapAlign: "start",
+    scrollSnapStop: embedded ? "normal" : "always",
+  };
 
   useEffect(() => {
     const shouldLock = !embedded || Boolean(leadingSlot);
@@ -136,6 +135,7 @@ export default function BtsReelsFeed({
     const thumb = btsThumbnail(video);
     const isPlaying = slideIndex === playingIndex;
     const embedSrc = btsEmbedSrc(video, isPlaying);
+    const eagerThumb = slideIndex === videoOffset;
     const playerKey =
       video.source === "cloudflare"
         ? `${video.cloudflareStreamUid}-${soundOn ? "sound" : "muted"}`
@@ -143,8 +143,27 @@ export default function BtsReelsFeed({
 
     return (
       <div className="bts-reels-stage">
-        {thumb ? <img src={thumb} alt="" aria-hidden className="bts-reels-bg" /> : null}
+        {thumb ? (
+          <img
+            src={thumb}
+            alt=""
+            aria-hidden
+            className="bts-reels-bg"
+            loading={eagerThumb ? "eager" : "lazy"}
+            decoding="async"
+          />
+        ) : null}
         <div className="bts-reels-video">
+          {!isPlaying && thumb ? (
+            <img
+              src={thumb}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 z-[1] h-full w-full object-cover"
+              loading={eagerThumb ? "eager" : "lazy"}
+              decoding="async"
+            />
+          ) : null}
           {isPlaying && embedSrc ? (
             <div className="absolute inset-0 overflow-hidden">
               <iframe
@@ -187,7 +206,7 @@ export default function BtsReelsFeed({
         data-bts-slide
         data-bts-index={slideIndex}
         className="relative h-[100dvh] w-full shrink-0 overflow-hidden bg-black"
-        style={SLIDE_SNAP_STYLE}
+        style={slideSnapStyle}
         aria-current={isPlaying ? "true" : undefined}
       >
         {embedded && index === 0 ? (
@@ -222,11 +241,11 @@ export default function BtsReelsFeed({
         <button
           type="button"
           onClick={toggleSound}
-          className="rounded-full bg-black/50 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-zinc-200 ring-1 ring-white/15 backdrop-blur-sm transition hover:bg-black/70"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-zinc-200 ring-1 ring-white/15 backdrop-blur-sm transition hover:bg-black/70"
           aria-label={soundOn ? t.btsMute : t.btsUnmute}
           title={soundOn ? t.btsMute : t.btsUnmute}
         >
-          {soundOn ? t.btsMute : t.btsUnmute}
+          {soundOn ? <VolumeOnIcon /> : <VolumeOffIcon />}
         </button>
         {videos.length > 1 ? (
           <div className="flex flex-col gap-1.5" aria-hidden>
@@ -255,11 +274,11 @@ export default function BtsReelsFeed({
           <section
             data-bts-slide
             data-bts-index={0}
-            className="relative h-[100dvh] w-full shrink-0 overflow-hidden"
-            style={SLIDE_SNAP_STYLE}
+            className="relative flex h-[100dvh] w-full shrink-0 flex-col justify-center overflow-hidden"
+            style={slideSnapStyle}
             aria-current={playingIndex === 0 ? "true" : undefined}
           >
-            <div className="h-full overflow-y-auto">{leadingSlot}</div>
+            <div className="max-h-full overflow-hidden">{leadingSlot}</div>
             {videos.length > 0 ? (
               <p
                 className="pointer-events-none absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-widest text-zinc-500/80"
@@ -303,5 +322,45 @@ export default function BtsReelsFeed({
 
       {soundControls}
     </div>
+  );
+}
+
+function VolumeOnIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+    </svg>
+  );
+}
+
+function VolumeOffIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <line x1="23" y1="9" x2="17" y2="15" />
+      <line x1="17" y1="9" x2="23" y2="15" />
+    </svg>
   );
 }
