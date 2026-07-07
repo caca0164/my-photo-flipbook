@@ -322,8 +322,58 @@ button.admin-gold-preset-swatch {
   scroll-snap-stop: always;
 }
 
-/* Crop + mask YouTube corner branding / “Watch on YouTube” overlays */
-.bts-yt-crop {
+.bts-reels-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  overflow: hidden;
+  background: #000;
+}
+
+.bts-reels-bg {
+  position: absolute;
+  top: -15%;
+  right: -15%;
+  bottom: -15%;
+  left: -15%;
+  z-index: 0;
+  width: 130%;
+  height: 130%;
+  max-width: none;
+  object-fit: cover;
+  transform: scale(1.08);
+  filter: blur(48px) saturate(1.25) brightness(0.72);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.bts-reels-video {
+  position: relative;
+  z-index: 1;
+  height: 100dvh;
+  width: calc(100dvh * 9 / 16);
+  max-width: none;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+.bts-reels-poster {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.bts-reels-player {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   overflow: hidden;
 }
 
@@ -334,16 +384,6 @@ button.admin-gold-preset-swatch {
   width: 100%;
   height: 100%;
   border: 0;
-  transform: translate(-50%, -50%) scale(1.4);
+  transform: translate(-50%, -50%) scale(1.42);
   transform-origin: center center;
-}
-
-.bts-yt-chrome-mask {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  box-shadow:
-    inset 0 52px 36px -28px rgba(0, 0, 0, 0.92),
-    inset 0 -64px 44px -24px rgba(0, 0, 0, 0.95),
-    inset -48px -12px 36px -28px rgba(0, 0, 0, 0.75);
 }

@@ -6,6 +6,7 @@ import { useNavOpen } from "@/app/components/NavOpenContext";
 import { coverFontCssFamily, coverFontsStylesheetHref } from "@/lib/cover-fonts";
 import { coverTitleGradientTextStyle } from "@/lib/cover-gold-presets";
 import { messages, withLocale, type Locale } from "@/lib/i18n";
+import { INSTAGRAM_PROFILE_URL } from "@/lib/social-links";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -226,14 +227,26 @@ export default function SideNav({
           <span className="text-sm font-medium tracking-wide text-zinc-300">
             {t.navMenu}
           </span>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500"
-            aria-label={t.navClose}
-          >
-            <CloseIcon />
-          </button>
+          <div className="flex items-center gap-1">
+            <a
+              href={INSTAGRAM_PROFILE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setOpen(false)}
+              className="rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500"
+              aria-label={t.navInstagramAria}
+            >
+              <InstagramIcon />
+            </a>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500"
+              aria-label={t.navClose}
+            >
+              <CloseIcon />
+            </button>
+          </div>
         </div>
 
         <nav className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 py-6">
@@ -481,6 +494,26 @@ function CloseIcon() {
       aria-hidden
     >
       <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
+function InstagramIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
     </svg>
   );
 }

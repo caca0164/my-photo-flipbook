@@ -26,6 +26,7 @@ export type BtsSettingsRow = {
 function revalidateBtsPaths() {
   for (const loc of locales) {
     revalidatePath(`/${loc}/bts`, "page");
+    revalidatePath(`/${loc}/about`, "page");
     revalidatePath(`/${loc}/admin/bts`, "page");
   }
 }

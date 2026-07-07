@@ -10,12 +10,20 @@ type Props = {
   pages: FlipBookPage[];
   coverOverlay: AlbumFlipCoverSettings | null;
   children: ReactNode;
+  /** Full-viewport snap scroll (e.g. About + BTS reels); drops outer padding. */
+  fullBleed?: boolean;
 };
 
 /** Full-viewport flip album behind a deep translucent scrim; content scrolls on top. */
-export default function AboutPageShell({ locale, pages, coverOverlay, children }: Props) {
+export default function AboutPageShell({
+  locale,
+  pages,
+  coverOverlay,
+  children,
+  fullBleed = false,
+}: Props) {
   return (
-    <main className="relative min-h-[100dvh] text-zinc-100">
+    <main className={`relative text-zinc-100 ${fullBleed ? "h-[100dvh]" : "min-h-[100dvh]"}`}>
       <div className="fixed inset-0 z-0 overflow-hidden" aria-hidden>
         <FlipBook locale={locale} pages={pages} coverOverlay={coverOverlay} ambient />
       </div>
@@ -23,7 +31,11 @@ export default function AboutPageShell({ locale, pages, coverOverlay, children }
         className="pointer-events-none fixed inset-0 z-[1] bg-zinc-950/82 backdrop-blur-[2px]"
         aria-hidden
       />
-      <div className="relative z-10 min-h-[100dvh] px-4 py-12">{children}</div>
+      <div
+        className={`relative z-10 ${fullBleed ? "h-[100dvh]" : "min-h-[100dvh] px-4 py-12"}`}
+      >
+        {children}
+      </div>
     </main>
   );
 }
