@@ -132,16 +132,25 @@ export default function BtsReelsFeed({
   }
 
   function btsEmbedSrc(video: BtsReelsItem, isPlaying: boolean): string {
-    const opts = {
-      autoplay: isPlaying,
-      mute: !soundOn,
-      loop: true,
-      controls: true as const,
-    };
+    if (!isPlaying) return "";
+
+    const muted = !soundOn;
     if (video.source === "cloudflare" && video.cloudflareStreamUid) {
-      return cloudflareStreamIframeSrc(video.cloudflareStreamUid, opts);
+      return cloudflareStreamIframeSrc(video.cloudflareStreamUid, {
+        autoplay: true,
+        muted,
+        loop: true,
+        controls: true,
+      });
     }
-    if (video.youtubeVideoId) return youTubeEmbedSrc(video.youtubeVideoId, opts);
+    if (video.youtubeVideoId) {
+      return youTubeEmbedSrc(video.youtubeVideoId, {
+        autoplay: true,
+        mute: muted,
+        loop: true,
+        controls: true,
+      });
+    }
     return "";
   }
 

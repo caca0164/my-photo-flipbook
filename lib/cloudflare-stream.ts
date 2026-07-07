@@ -1,6 +1,8 @@
 export type CloudflareStreamEmbedOptions = {
   autoplay?: boolean;
   muted?: boolean;
+  /** Alias for `muted` (YouTube-style naming). */
+  mute?: boolean;
   loop?: boolean;
   controls?: boolean;
 };
@@ -12,10 +14,18 @@ function getCustomerCode(): string | null {
   return code || null;
 }
 
+function getApiToken(): string | null {
+  const token =
+    process.env.CLOUDFLARE_API_TOKEN?.trim() ||
+    process.env.CLOUDFLARE_STREAM_API_TOKEN?.trim();
+  return token || null;
+}
+
 export function cloudflareStreamConfigStatus(): { ok: boolean; missing: string[] } {
   const missing: string[] = [];
   if (!process.env.CLOUDFLARE_ACCOUNT_ID?.trim()) missing.push("CLOUDFLARE_ACCOUNT_ID");
-  if (!process.env.CLOUDFLARE_API_TOKEN?.trim()) missing.push("CLOUDFLARE_API_TOKEN");
+  if (!getApiToken())
+    missing.push("CLOUDFLARE_API_TOKEN (or CLOUDFLARE_STREAM_API_TOKEN)");
   if (!getCustomerCode())
     missing.push(
       "NEXT_PUBLIC_CLOUDFLARE_STREAM_CUSTOMER_CODE (or CLOUDFLARE_STREAM_CUSTOMER_CODE)",
@@ -45,9 +55,10 @@ export function cloudflareStreamIframeSrc(
   if (!code) return "";
   const params = new URLSearchParams();
   if (options.autoplay) params.set("autoplay", "true");
-  if (options.muted) params.set("muted", "true");
+  if (options.muted || options.mute) params.set("muted", "true");
   if (options.loop) params.set("loop", "true");
   if (options.controls === false) params.set("controls", "false");
+  if (options.autoplay) params.set("preload", "auto");
   const qs = params.toString();
   return `https://customer-${code}.cloudflarestream.com/${encodeURIComponent(uid)}/iframe${qs ? `?${qs}` : ""}`;
 }
@@ -62,9 +73,11 @@ export async function createCloudflareStreamDirectUpload(input?: {
   maxDurationSeconds?: number;
 }): Promise<{ error?: string; result?: DirectUploadResult }> {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
-  const token = process.env.CLOUDFLARE_API_TOKEN?.trim();
+  const token = getApiToken();
   if (!accountId || !token) {
-    return { error: "Missing CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN" };
+    return {
+      error: "Missing CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN (or CLOUDFLARE_STREAM_API_TOKEN)",
+    };
   }
 
   const res = await fetch(
@@ -105,9 +118,11 @@ export async function createCloudflareStreamDirectUpload(input?: {
 
 export async function deleteCloudflareStreamVideo(uid: string): Promise<{ error?: string }> {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
-  const token = process.env.CLOUDFLARE_API_TOKEN?.trim();
+  const token = getApiToken();
   if (!accountId || !token) {
-    return { error: "Missing CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN" };
+    return {
+      error: "Missing CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN (or CLOUDFLARE_STREAM_API_TOKEN)",
+    };
   }
 
   const res = await fetch(
