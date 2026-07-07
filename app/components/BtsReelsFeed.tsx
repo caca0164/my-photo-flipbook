@@ -8,7 +8,14 @@ import {
 import { messages, type Locale } from "@/lib/i18n";
 import { youTubeEmbedSrc, youTubeThumbnailUrl } from "@/lib/youtube";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 
 export type BtsReelsItem = {
   id: string;
@@ -32,6 +39,47 @@ const SCROLL_STYLE: CSSProperties = {
   scrollSnapType: "y mandatory",
   WebkitOverflowScrolling: "touch",
 };
+
+function btsPlayingEmbedSrc(video: BtsReelsItem): string {
+  if (video.source === "cloudflare" && video.cloudflareStreamUid) {
+    return cloudflareStreamIframeSrc(video.cloudflareStreamUid, {
+      autoplay: true,
+      muted: true,
+      loop: true,
+      controls: true,
+    });
+  }
+  if (video.youtubeVideoId) {
+    return youTubeEmbedSrc(video.youtubeVideoId, {
+      autoplay: true,
+      mute: true,
+      loop: true,
+      controls: true,
+      enableJsApi: true,
+    });
+  }
+  return "";
+}
+
+function applySoundToIframe(iframe: HTMLIFrameElement, video: BtsReelsItem, soundOn: boolean) {
+  if (video.source === "youtube") {
+    iframe.contentWindow?.postMessage(
+      JSON.stringify({
+        event: "command",
+        func: soundOn ? "unMute" : "mute",
+        args: "",
+      }),
+      "*",
+    );
+    return;
+  }
+
+  if (video.source === "cloudflare") {
+    void bindCloudflareStreamPlayer(iframe).then((player) => {
+      if (player) player.muted = !soundOn;
+    });
+  }
+}
 
 export default function BtsReelsFeed({
   locale,
@@ -110,25 +158,7 @@ export default function BtsReelsFeed({
 
   function btsEmbedSrc(video: BtsReelsItem, isPlaying: boolean): string {
     if (!isPlaying) return "";
-
-    const muted = !soundOn;
-    if (video.source === "cloudflare" && video.cloudflareStreamUid) {
-      return cloudflareStreamIframeSrc(video.cloudflareStreamUid, {
-        autoplay: true,
-        muted,
-        loop: true,
-        controls: true,
-      });
-    }
-    if (video.youtubeVideoId) {
-      return youTubeEmbedSrc(video.youtubeVideoId, {
-        autoplay: true,
-        mute: muted,
-        loop: true,
-        controls: true,
-      });
-    }
-    return "";
+    return btsPlayingEmbedSrc(video);
   }
 
   function renderVideoStage(video: BtsReelsItem, slideIndex: number) {
@@ -137,9 +167,7 @@ export default function BtsReelsFeed({
     const embedSrc = btsEmbedSrc(video, isPlaying);
     const eagerThumb = slideIndex === videoOffset;
     const playerKey =
-      video.source === "cloudflare"
-        ? `${video.cloudflareStreamUid}-${soundOn ? "sound" : "muted"}`
-        : `${video.youtubeVideoId}-${soundOn ? "sound" : "muted"}`;
+      video.source === "cloudflare" ? video.cloudflareStreamUid : video.youtubeVideoId;
 
     return (
       <div className="bts-reels-stage">
@@ -165,23 +193,13 @@ export default function BtsReelsFeed({
             />
           ) : null}
           {isPlaying && embedSrc ? (
-            <div className="absolute inset-0 overflow-hidden">
-              <iframe
-                key={playerKey}
-                src={embedSrc}
-                title={video.title.trim() || "BTS video"}
-                className="absolute left-1/2 top-1/2 h-full w-full border-0"
-                style={{
-                  transform:
-                    video.source === "youtube"
-                      ? "translate(-50%, -50%) scale(1.42)"
-                      : "translate(-50%, -50%)",
-                  transformOrigin: "center center",
-                }}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                referrerPolicy="strict-origin-when-cross-origin"
-              />
-            </div>
+            <BtsVideoIframe
+              key={playerKey}
+              video={video}
+              embedSrc={embedSrc}
+              title={video.title.trim() || "BTS video"}
+              soundOn={soundOn}
+            />
           ) : null}
 
           {video.title.trim() ? (
@@ -226,22 +244,29 @@ export default function BtsReelsFeed({
 
   const soundControls =
     playingIndex >= videoOffset ? (
-      <div
-        className={`${
-          embedded ? "fixed" : "absolute"
-        } bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-30 flex flex-col items-center gap-3`}
-      >
-        <button
-          type="button"
-          onClick={toggleSound}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-zinc-200 ring-1 ring-white/15 backdrop-blur-sm transition hover:bg-black/70"
-          aria-label={soundOn ? t.btsMute : t.btsUnmute}
-          title={soundOn ? t.btsMute : t.btsUnmute}
+      <>
+        <div
+          className={`${
+            embedded ? "fixed" : "absolute"
+          } right-4 top-[max(0.75rem,env(safe-area-inset-top))] z-30`}
         >
-          {soundOn ? <VolumeOnIcon /> : <VolumeOffIcon />}
-        </button>
+          <button
+            type="button"
+            onClick={toggleSound}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-zinc-200 ring-1 ring-white/15 backdrop-blur-sm transition hover:bg-black/70"
+            aria-label={soundOn ? t.btsMute : t.btsUnmute}
+            title={soundOn ? t.btsMute : t.btsUnmute}
+          >
+            {soundOn ? <VolumeOnIcon /> : <VolumeOffIcon />}
+          </button>
+        </div>
         {videos.length > 1 ? (
-          <div className="flex flex-col gap-1.5" aria-hidden>
+          <div
+            className={`${
+              embedded ? "fixed" : "absolute"
+            } bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-30 flex flex-col gap-1.5`}
+            aria-hidden
+          >
             {videos.map((v, i) => (
               <span
                 key={v.id}
@@ -252,7 +277,7 @@ export default function BtsReelsFeed({
             ))}
           </div>
         ) : null}
-      </div>
+      </>
     ) : null;
 
   if (embedded) {
@@ -309,6 +334,93 @@ export default function BtsReelsFeed({
       {soundControls}
     </div>
   );
+}
+
+function BtsVideoIframe({
+  video,
+  embedSrc,
+  title,
+  soundOn,
+}: {
+  video: BtsReelsItem;
+  embedSrc: string;
+  title: string;
+  soundOn: boolean;
+}) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    applySoundToIframe(iframe, video, soundOn);
+  }, [soundOn, video]);
+
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      <iframe
+        ref={iframeRef}
+        src={embedSrc}
+        title={title}
+        className="absolute left-1/2 top-1/2 h-full w-full border-0"
+        style={{
+          transform:
+            video.source === "youtube"
+              ? "translate(-50%, -50%) scale(1.42)"
+              : "translate(-50%, -50%)",
+          transformOrigin: "center center",
+        }}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        referrerPolicy="strict-origin-when-cross-origin"
+        onLoad={(event) => {
+          applySoundToIframe(event.currentTarget, video, soundOn);
+        }}
+      />
+    </div>
+  );
+}
+
+type CloudflareStreamPlayer = { muted: boolean };
+
+declare global {
+  interface Window {
+    Stream?: (element: HTMLIFrameElement) => CloudflareStreamPlayer;
+  }
+}
+
+let streamSdkPromise: Promise<void> | null = null;
+
+function loadCloudflareStreamSdk(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (window.Stream) return Promise.resolve();
+  if (!streamSdkPromise) {
+    streamSdkPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://embed.cloudflarestream.com/embed/sdk.latest.js";
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Cloudflare Stream SDK failed to load"));
+      document.head.appendChild(script);
+    });
+  }
+  return streamSdkPromise;
+}
+
+const cloudflarePlayerCache = new WeakMap<HTMLIFrameElement, CloudflareStreamPlayer>();
+
+async function bindCloudflareStreamPlayer(
+  iframe: HTMLIFrameElement,
+): Promise<CloudflareStreamPlayer | null> {
+  const cached = cloudflarePlayerCache.get(iframe);
+  if (cached) return cached;
+  try {
+    await loadCloudflareStreamSdk();
+    if (!window.Stream) return null;
+    const player = window.Stream(iframe);
+    cloudflarePlayerCache.set(iframe, player);
+    return player;
+  } catch {
+    return null;
+  }
 }
 
 function BtsSwipeHint({ label }: { label: string }) {

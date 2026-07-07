@@ -46,6 +46,8 @@ export type YouTubeEmbedOptions = {
    * Pair with `.bts-yt-crop` CSS to crop corner branding.
    */
   minimalUi?: boolean;
+  /** Enable iframe postMessage commands (mute / unMute). */
+  enableJsApi?: boolean;
   /** Site origin for embed API (client-only). */
   origin?: string;
 };
@@ -70,6 +72,7 @@ export function youTubeEmbedSrc(videoId: string, options: YouTubeEmbedOptions = 
 
   if (options.autoplay) params.set("autoplay", "1");
   if (options.mute) params.set("mute", "1");
+  if (options.enableJsApi) params.set("enablejsapi", "1");
   if (options.loop) {
     params.set("loop", "1");
     params.set("playlist", videoId);
