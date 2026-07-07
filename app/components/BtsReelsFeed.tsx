@@ -28,28 +28,6 @@ type Props = {
   leadingSlot?: ReactNode;
 };
 
-const VIDEO_COL_STYLE: CSSProperties = {
-  height: "100dvh",
-  width: "calc(100dvh * 9 / 16)",
-};
-
-const BLUR_BG_STYLE: CSSProperties = {
-  position: "absolute",
-  top: "-15%",
-  right: "-15%",
-  bottom: "-15%",
-  left: "-15%",
-  zIndex: 0,
-  width: "130%",
-  height: "130%",
-  maxWidth: "none",
-  objectFit: "cover",
-  transform: "scale(1.08)",
-  filter: "blur(48px) saturate(1.25) brightness(0.72)",
-  opacity: 0.9,
-  pointerEvents: "none",
-};
-
 const SCROLL_STYLE: CSSProperties = {
   scrollSnapType: "y mandatory",
   WebkitOverflowScrolling: "touch",
@@ -72,7 +50,7 @@ export default function BtsReelsFeed({
   const t = messages[locale];
   const scrollRef = useRef<HTMLDivElement>(null);
   const [playingIndex, setPlayingIndex] = useState(0);
-  const [soundOn, setSoundOn] = useState(false);
+  const [soundOn, setSoundOn] = useState(true);
   const videoOffset = leadingSlot ? 1 : 0;
   const slideCount = videos.length + videoOffset;
 
@@ -164,9 +142,9 @@ export default function BtsReelsFeed({
         : `${video.youtubeVideoId}-${soundOn ? "sound" : "muted"}`;
 
     return (
-      <div className="absolute inset-0 overflow-hidden bg-black">
-        {thumb ? <img src={thumb} alt="" aria-hidden style={BLUR_BG_STYLE} /> : null}
-        <div className="relative z-[1] mx-auto shrink-0 overflow-hidden bg-black" style={VIDEO_COL_STYLE}>
+      <div className="bts-reels-stage">
+        {thumb ? <img src={thumb} alt="" aria-hidden className="bts-reels-bg" /> : null}
+        <div className="bts-reels-video">
           {isPlaying && embedSrc ? (
             <div className="absolute inset-0 overflow-hidden">
               <iframe

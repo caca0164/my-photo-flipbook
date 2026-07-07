@@ -333,31 +333,43 @@ button.admin-gold-preset-swatch {
 }
 
 .bts-reels-bg {
-  position: absolute;
-  top: -15%;
-  right: -15%;
-  bottom: -15%;
-  left: -15%;
-  z-index: 0;
-  width: 130%;
-  height: 130%;
-  max-width: none;
-  object-fit: cover;
-  transform: scale(1.08);
-  filter: blur(48px) saturate(1.25) brightness(0.72);
-  opacity: 0.9;
-  pointer-events: none;
+  display: none;
 }
 
 .bts-reels-video {
   position: relative;
   z-index: 1;
   height: 100dvh;
-  width: calc(100dvh * 9 / 16);
-  max-width: none;
+  width: 100%;
+  max-width: 100vw;
   flex-shrink: 0;
   overflow: hidden;
   background: #000;
+}
+
+@media (min-aspect-ratio: 9/16) {
+  .bts-reels-bg {
+    display: block;
+    position: absolute;
+    top: -15%;
+    right: -15%;
+    bottom: -15%;
+    left: -15%;
+    z-index: 0;
+    width: 130%;
+    height: 130%;
+    max-width: none;
+    object-fit: cover;
+    transform: scale(1.08);
+    filter: blur(48px) saturate(1.25) brightness(0.72);
+    opacity: 0.9;
+    pointer-events: none;
+  }
+
+  .bts-reels-video {
+    width: calc(100dvh * 9 / 16);
+    max-width: none;
+  }
 }
 
 .bts-reels-poster {
