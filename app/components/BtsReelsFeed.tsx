@@ -219,14 +219,7 @@ export default function BtsReelsFeed({
 
         {renderVideoStage(video, slideIndex)}
 
-        {index < videos.length - 1 ? (
-          <p
-            className="pointer-events-none absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-20 -translate-x-1/2 text-[10px] uppercase tracking-widest text-zinc-500/80"
-            aria-hidden
-          >
-            {t.btsSwipeHint}
-          </p>
-        ) : null}
+        {index < videos.length - 1 ? <BtsSwipeHint label={t.btsSwipeHint} /> : null}
       </section>
     );
   });
@@ -279,14 +272,7 @@ export default function BtsReelsFeed({
             aria-current={playingIndex === 0 ? "true" : undefined}
           >
             <div className="max-h-full overflow-hidden">{leadingSlot}</div>
-            {videos.length > 0 ? (
-              <p
-                className="pointer-events-none absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-widest text-zinc-500/80"
-                aria-hidden
-              >
-                {t.btsSwipeHint}
-              </p>
-            ) : null}
+            {videos.length > 0 ? <BtsSwipeHint label={t.btsSwipeHint} /> : null}
           </section>
         ) : null}
         {slideList}
@@ -322,6 +308,36 @@ export default function BtsReelsFeed({
 
       {soundControls}
     </div>
+  );
+}
+
+function BtsSwipeHint({ label }: { label: string }) {
+  return (
+    <div
+      className="pointer-events-none absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-1 text-zinc-500/80"
+      aria-hidden
+    >
+      <p className="text-[10px] uppercase tracking-widest">{label}</p>
+      <ChevronDownIcon />
+    </div>
+  );
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M6 9l6 6 6-6" />
+    </svg>
   );
 }
 
